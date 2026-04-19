@@ -268,7 +268,8 @@ async function loadCrime(){
   try{
     const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10);
     // Nashville Police Incidents dataset (Socrata) - public, no key needed
-    const url=`https://data.nashville.gov/resource/2u6v-ujjs.json?zip_code=37013&$where=incident_occurred>='${since}'&$limit=200&$order=incident_occurred DESC`;
+    const base = `https://data.nashville.gov/resource/2u6v-ujjs.json?zip_code=37013&$where=incident_occurred>='${since}'&$limit=200&$order=incident_occurred DESC`;
+    const url = `https://corsproxy.io/?url=${encodeURIComponent(base)}`;
     const data=await(await fetch(url)).json();
     spinner.style.display='none';
     if(!Array.isArray(data)||data.length===0){
@@ -313,7 +314,8 @@ async function loadTraffic(){
   try{
     const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10);
     // Nashville Traffic Accidents dataset (Socrata) ID: 6v6w-hpcw
-    const url=`https://data.nashville.gov/resource/6v6w-hpcw.json?zip_code=37013&$where=date_and_time>='${since}'&$limit=200&$order=date_and_time DESC`;
+    const base = `https://data.nashville.gov/resource/6v6w-hpcw.json?zip_code=37013&$where=date_and_time>='${since}'&$limit=200&$order=date_and_time DESC`;
+    const url = `https://corsproxy.io/?url=${encodeURIComponent(base)}`;
     const data=await(await fetch(url)).json();
     spinner.style.display='none';
     if(!Array.isArray(data)||data.length===0){
