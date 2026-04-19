@@ -176,17 +176,15 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 const LAT = 36.0654, LON = -86.6884;
 
-// This proxy adds the correct CORS headers so the browser accepts the response
+// CORS proxy — returns raw JSON directly, no unwrapping needed
 function proxied(url) {
-  return 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  return 'https://corsproxy.io/?' + encodeURIComponent(url);
 }
 
 async function fetchJSON(url) {
   const res = await fetch(url);
-  const json = await res.json();
-  // allorigins wraps the real response in json.contents (a string)
-  if (json.contents !== undefined) return JSON.parse(json.contents);
-  return json;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────
