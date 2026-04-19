@@ -323,7 +323,7 @@ async function loadCrime(){
     });
     const json=await fetchJSON(`${CRIME_URL}?${params}`);
     const data=(json.features||[]).map(f=>f.attributes);
-
+      console.log('CRIME SAMPLE:', JSON.stringify(data[0]));
     spinner.style.display='none';
     if(!Array.isArray(data)||data.length===0){
       document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No incidents found for 37013 in this period.</td></tr>';
@@ -379,7 +379,7 @@ async function loadTraffic(){
     });
     const json=await fetchJSON(`${TRAFFIC_URL}?${params}`);
     const data=(json.features||[]).map(f=>f.attributes);
-
+      console.log('TRAFFIC SAMPLE:', JSON.stringify(data[0]));
     spinner.style.display='none';
     if(!Array.isArray(data)||data.length===0){
       document.getElementById('trafficTableBody').innerHTML='<tr><td colspan="6" class="label py-4 text-center">No accident records found.</td></tr>';
