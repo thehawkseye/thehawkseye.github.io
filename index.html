@@ -315,7 +315,7 @@ async function loadCrime(){
   try{
     const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10).replace(/-/g,'');
     const params=new URLSearchParams({
-      where: `zip_code='37013' AND incident_occurred>=DATE '${since.slice(0,4)}-${since.slice(4,6)}-${since.slice(6,8)}'`,
+      where: `1=1`,
       outFields: 'incident_occurred,offense_description,offense_category,incident_location,weapon_description',
       resultRecordCount: 200,
       orderByFields: 'incident_occurred DESC',
@@ -371,7 +371,7 @@ async function loadTraffic(){
   try{
     const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10);
     const params=new URLSearchParams({
-      where: `zip_code='37013' AND date_and_time>=DATE '${since}'`,
+      where: `1=1`,
       outFields: 'date_and_time,street_address,number_of_injuries,number_of_fatalities,hit_and_run',
       resultRecordCount: 200,
       orderByFields: 'date_and_time DESC',
