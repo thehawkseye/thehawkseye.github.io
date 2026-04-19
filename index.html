@@ -1,15 +1,452 @@
-﻿html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <title>My Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Hawkseye | 37013</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-cyan: #00f5ff;
+      --neon-green: #00ff88;
+      --neon-amber: #ffb700;
+      --neon-red: #ff4444;
+      --bg-base: #0a0e1a;
+      --bg-card: #0f1628;
+      --bg-card2: #111827;
+      --border-dim: rgba(0,245,255,0.15);
+      --border-bright: rgba(0,245,255,0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-base);
+      font-family: 'Rajdhani', sans-serif;
+      color: #e0e8ff;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(0,245,255,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 80%, rgba(0,255,136,0.03) 0%, transparent 60%);
+    }
+
+    .mono { font-family: 'Share Tech Mono', monospace; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 12px;
+      transition: border-color 0.3s;
+    }
+    .card:hover { border-color: var(--border-bright); }
+
+    .neon-text { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,245,255,0.6); }
+    .neon-green { color: var(--neon-green); text-shadow: 0 0 10px rgba(0,255,136,0.6); }
+    .neon-amber { color: var(--neon-amber); text-shadow: 0 0 10px rgba(255,183,0,0.6); }
+    .neon-red { color: var(--neon-red); }
+
+    .live-dot {
+      width: 8px; height: 8px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: pulse 2s infinite;
+      display: inline-block;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #4a6080;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .big-temp {
+      font-size: 72px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .forecast-card {
+      background: var(--bg-card2);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+      flex: 1;
+      min-width: 0;
+      transition: all 0.3s;
+    }
+    .forecast-card:hover {
+      border-color: var(--border-bright);
+      background: rgba(0,245,255,0.03);
+    }
+    .forecast-card.today {
+      border-color: rgba(0,245,255,0.4);
+      background: rgba(0,245,255,0.05);
+    }
+
+    .top-bar {
+      border-bottom: 1px solid var(--border-dim);
+      background: rgba(10,14,26,0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 640px) {
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+      .big-temp { font-size: 52px; }
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+      border-radius: 2px;
+      transition: width 1s ease;
+    }
+
+    .alert-banner {
+      background: linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05));
+      border: 1px solid rgba(255,68,68,0.4);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+
+    #tempChart { max-height: 200px; }
+
+    .spinner {
+      border: 2px solid rgba(0,245,255,0.2);
+      border-top-color: var(--neon-cyan);
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .wind-dir {
+      display: inline-block;
+      transition: transform 0.5s ease;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white p-8">
-    <div class="bg-gray-800 rounded-xl p-6 max-w-sm">
-        <h1 class="text-xl font-bold">Nashville, TN</h1>
-        <p class="text-gray-400">64°F — Sunny</p>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="top-bar px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-bold tracking-widest neon-text">THE HAWKSEYE</span>
+      <span class="label">Nashville · 37013</span>
     </div>
+    <div class="flex items-center gap-2">
+      <span class="live-dot"></span>
+      <span class="label">LIVE NWS DATA</span>
+      <span class="label mono ml-4" id="lastUpdated">--:--</span>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 py-6 space-y-4">
+
+    <!-- ALERT BANNER (hidden by default) -->
+    <div id="alertBanner" class="alert-banner hidden">
+      <div class="flex items-start gap-3">
+        <span class="neon-red text-lg">⚠</span>
+        <div>
+          <div class="label neon-red mb-1">ACTIVE WEATHER ALERT</div>
+          <div id="alertText" class="text-sm text-red-300"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CURRENT CONDITIONS -->
+    <div class="card p-6">
+      <div class="label mb-4">CURRENT CONDITIONS · ANTIOCH / SOUTHEAST NASHVILLE</div>
+      <div class="flex flex-wrap gap-6 items-end">
+        <div>
+          <div id="currentTemp" class="big-temp neon-text mono">--°</div>
+          <div id="feelsLike" class="label mt-1">FEELS LIKE --°F</div>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <div id="shortForecast" class="text-xl font-semibold mb-2">Loading...</div>
+          <div id="detailForecast" class="text-sm text-slate-400 leading-relaxed"></div>
+        </div>
+        <div class="text-5xl" id="weatherIcon">⏳</div>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stat-row">
+      <div class="card p-4">
+        <div class="label mb-2">HUMIDITY</div>
+        <div class="mono text-2xl font-bold" id="humidity">--%</div>
+        <div class="progress-bar"><div class="progress-fill" id="humidityBar" style="width:0%"></div></div>
+      </div>
+      <div class="card p-4">
+        <div class="label mb-2">WIND</div>
+        <div class="mono text-2xl font-bold" id="wind">-- mph</div>
+        <div class="label mt-1" id="windDir">DIR: --</div>
+      </div>
+      <div class="card p-4">
+        <div class="label mb-2">VISIBILITY</div>
+        <div class="mono text-2xl font-bold" id="visibility">-- mi</div>
+        <div class="progress-bar"><div class="progress-fill" id="visBar" style="width:0%"></div></div>
+      </div>
+      <div class="card p-4">
+        <div class="label mb-2">DEWPOINT</div>
+        <div class="mono text-2xl font-bold" id="dewpoint">--°F</div>
+        <div class="label mt-1" id="dewDesc">--</div>
+      </div>
+    </div>
+
+    <!-- TEMPERATURE CHART -->
+    <div class="card p-6">
+      <div class="label mb-4">HOURLY TEMPERATURE TREND · NEXT 12 HOURS</div>
+      <canvas id="tempChart"></canvas>
+    </div>
+
+    <!-- 7-DAY FORECAST -->
+    <div class="card p-6">
+      <div class="label mb-4">7-DAY FORECAST</div>
+      <div id="forecastCards" class="flex gap-2 overflow-x-auto pb-2">
+        <div class="label">Loading forecast...</div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="label text-center pb-4">
+      DATA SOURCE: NATIONAL WEATHER SERVICE · NASHVILLE OFFICE ·
+      <span id="stationId">KBNA</span>
+    </div>
+
+  </div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────────────
+  // 37013 centroid coords (Antioch/SE Nashville)
+  const LAT = 36.0654;
+  const LON = -86.6884;
+  const NWS_POINTS = `https://api.weather.gov/points/${LAT},${LON}`;
+
+  // ─── WEATHER ICONS ────────────────────────────────────────────────
+  function getIcon(desc = '') {
+    const d = desc.toLowerCase();
+    if (d.includes('thunder')) return '⛈️';
+    if (d.includes('snow')) return '❄️';
+    if (d.includes('rain') || d.includes('shower')) return '🌧️';
+    if (d.includes('drizzle')) return '🌦️';
+    if (d.includes('fog') || d.includes('mist')) return '🌫️';
+    if (d.includes('wind')) return '💨';
+    if (d.includes('cloud') && d.includes('part')) return '⛅';
+    if (d.includes('cloud') || d.includes('overcast')) return '☁️';
+    if (d.includes('clear') || d.includes('sunny')) return '☀️';
+    if (d.includes('mostly sunny') || d.includes('mostly clear')) return '🌤️';
+    return '🌡️';
+  }
+
+  function cToF(c) { return Math.round(c * 9/5 + 32); }
+  function mpsToMph(mps) { return Math.round(mps * 2.237); }
+  function mToMi(m) { return (m / 1609.34).toFixed(1); }
+
+  function dewDesc(f) {
+    if (f >= 70) return 'OPPRESSIVE';
+    if (f >= 60) return 'HUMID';
+    if (f >= 50) return 'COMFORTABLE';
+    return 'DRY';
+  }
+
+  function updateTime() {
+    const now = new Date();
+    document.getElementById('lastUpdated').textContent =
+      now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  // ─── CHART ────────────────────────────────────────────────────────
+  let tempChart;
+  function buildChart(labels, temps) {
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    if (tempChart) tempChart.destroy();
+    tempChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Temp °F',
+          data: temps,
+          borderColor: '#00f5ff',
+          backgroundColor: 'rgba(0,245,255,0.08)',
+          pointBackgroundColor: '#00f5ff',
+          pointRadius: 4,
+          tension: 0.4,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            ticks: { color: '#4a6080', font: { family: 'Share Tech Mono', size: 11 } },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          },
+          y: {
+            ticks: {
+              color: '#4a6080',
+              font: { family: 'Share Tech Mono', size: 11 },
+              callback: v => v + '°'
+            },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          }
+        }
+      }
+    });
+  }
+
+  // ─── FETCH PIPELINE ───────────────────────────────────────────────
+  async function loadWeather() {
+    try {
+      // Step 1: get grid info
+      const ptRes = await fetch(NWS_POINTS);
+      const ptData = await ptRes.json();
+      const { forecastHourly, forecast, observationStations } = ptData.properties;
+
+      // Step 2: get nearest observation station
+      const stRes = await fetch(observationStations);
+      const stData = await stRes.json();
+      const stationUrl = stData.features[0].id + '/observations/latest';
+      const stId = stData.features[0].properties.stationIdentifier;
+      document.getElementById('stationId').textContent = stId;
+
+      // Step 3: latest observation
+      const obsRes = await fetch(stationUrl);
+      const obsData = await obsRes.json();
+      const obs = obsData.properties;
+
+      const tempF = obs.temperature.value !== null ? cToF(obs.temperature.value) : null;
+      const feelsF = obs.heatIndex.value !== null
+        ? cToF(obs.heatIndex.value)
+        : obs.windChill.value !== null
+          ? cToF(obs.windChill.value)
+          : tempF;
+      const humidity = Math.round(obs.relativeHumidity.value ?? 0);
+      const windSpd = obs.windSpeed.value !== null ? mpsToMph(obs.windSpeed.value) : 0;
+      const windDirDeg = obs.windDirection.value;
+      const visMi = obs.visibility.value !== null ? mToMi(obs.visibility.value) : null;
+      const dewF = obs.dewpoint.value !== null ? cToF(obs.dewpoint.value) : null;
+      const desc = obs.textDescription || '';
+
+      document.getElementById('currentTemp').textContent = tempF !== null ? tempF + '°F' : '--°F';
+      document.getElementById('feelsLike').textContent = `FEELS LIKE ${feelsF ?? '--'}°F`;
+      document.getElementById('shortForecast').textContent = desc || 'See forecast below';
+      document.getElementById('weatherIcon').textContent = getIcon(desc);
+      document.getElementById('humidity').textContent = humidity + '%';
+      document.getElementById('humidityBar').style.width = humidity + '%';
+      document.getElementById('wind').textContent = windSpd + ' mph';
+
+      // Wind direction
+      const dirs = ['N','NE','E','SE','S','SW','W','NW','N'];
+      const dirLabel = windDirDeg !== null ? dirs[Math.round(windDirDeg / 45) % 8] : '--';
+      document.getElementById('windDir').textContent = 'DIR: ' + dirLabel;
+
+      document.getElementById('visibility').textContent = visMi ? visMi + ' mi' : '--';
+      const visPercent = visMi ? Math.min(100, (parseFloat(visMi) / 10) * 100) : 0;
+      document.getElementById('visBar').style.width = visPercent + '%';
+      document.getElementById('dewpoint').textContent = dewF !== null ? dewF + '°F' : '--';
+      document.getElementById('dewDesc').textContent = dewF !== null ? dewDesc(dewF) : '--';
+
+      // Step 4: hourly for chart
+      const hrRes = await fetch(forecastHourly);
+      const hrData = await hrRes.json();
+      const hours = hrData.properties.periods.slice(0, 12);
+      const chartLabels = hours.map(h => {
+        const d = new Date(h.startTime);
+        return d.toLocaleTimeString('en-US', {hour: 'numeric', hour12: true});
+      });
+      const chartTemps = hours.map(h => h.temperature);
+      buildChart(chartLabels, chartTemps);
+
+      // Detail from first hourly
+      if (hours[0]) {
+        document.getElementById('detailForecast').textContent =
+          hours[0].detailedForecast || hours[0].shortForecast || '';
+      }
+
+      // Step 5: 7-day forecast
+      const fcRes = await fetch(forecast);
+      const fcData = await fcRes.json();
+      const periods = fcData.properties.periods.slice(0, 14);
+
+      // Group into day pairs (day/night)
+      const days = [];
+      for (let i = 0; i < periods.length; i++) {
+        if (periods[i].isDaytime) {
+          days.push({ day: periods[i], night: periods[i+1] });
+        }
+      }
+
+      const fcContainer = document.getElementById('forecastCards');
+      fcContainer.innerHTML = '';
+      days.slice(0, 7).forEach((pair, idx) => {
+        const p = pair.day;
+        const n = pair.night;
+        const isToday = idx === 0;
+        const card = document.createElement('div');
+        card.className = 'forecast-card' + (isToday ? ' today' : '');
+        const dayName = isToday ? 'TODAY' : p.name.toUpperCase().split(' ')[0];
+        const precip = p.probabilityOfPrecipitation?.value;
+        card.innerHTML = `
+          <div class="label mb-2">${dayName}</div>
+          <div class="text-2xl mb-2">${getIcon(p.shortForecast)}</div>
+          <div class="mono font-bold text-sm neon-text">${p.temperature}°</div>
+          ${n ? `<div class="mono text-xs text-slate-500 mt-1">${n.temperature}°</div>` : ''}
+          ${precip !== null && precip !== undefined ? `<div class="label mt-2" style="color:#4a8080">💧${precip}%</div>` : ''}
+          <div class="text-xs text-slate-500 mt-2 leading-tight">${p.shortForecast}</div>
+        `;
+        fcContainer.appendChild(card);
+      });
+
+      // Check for alerts
+      const alertRes = await fetch(`https://api.weather.gov/alerts/active?point=${LAT},${LON}`);
+      const alertData = await alertRes.json();
+      if (alertData.features && alertData.features.length > 0) {
+        const alert = alertData.features[0].properties;
+        document.getElementById('alertBanner').classList.remove('hidden');
+        document.getElementById('alertText').textContent =
+          `${alert.event} — ${alert.headline}`;
+      }
+
+      updateTime();
+
+    } catch (err) {
+      console.error('Weather fetch error:', err);
+      document.getElementById('shortForecast').textContent = 'Error loading data — check console';
+    }
+  }
+
+  // Load on start, refresh every 5 minutes
+  loadWeather();
+  setInterval(loadWeather, 5 * 60 * 1000);
+</script>
 </body>
-</html>>
+</html>
