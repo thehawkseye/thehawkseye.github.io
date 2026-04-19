@@ -1,598 +1,357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Hawkseye | 37013</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --neon-cyan: #00f5ff;
-            --neon-green: #00ff88;
-            --neon-amber: #ffb700;
-            --neon-red: #ff4444;
-            --neon-purple: #bf5fff;
-            --bg-base: #0a0e1a;
-            --bg-card: #0f1628;
-            --bg-card2: #111827;
-            --border-dim: rgba(0,245,255,0.12);
-            --border-bright: rgba(0,245,255,0.45);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--bg-base);
-            font-family: 'Rajdhani', sans-serif;
-            color: #e0e8ff;
-            min-height: 100vh;
-            background-image: radial-gradient(ellipse at 15% 15%, rgba(0,245,255,0.04) 0%, transparent 55%), radial-gradient(ellipse at 85% 85%, rgba(0,255,136,0.03) 0%, transparent 55%);
-        }
-
-        .mono {
-            font-family: 'Share Tech Mono', monospace;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-dim);
-            border-radius: 12px;
-            transition: border-color 0.3s;
-        }
-
-            .card:hover {
-                border-color: var(--border-bright);
-            }
-
-        .neon-text {
-            color: var(--neon-cyan);
-            text-shadow: 0 0 10px rgba(0,245,255,0.5);
-        }
-
-        .neon-green {
-            color: var(--neon-green);
-            text-shadow: 0 0 10px rgba(0,255,136,0.5);
-        }
-
-        .neon-amber {
-            color: var(--neon-amber);
-            text-shadow: 0 0 10px rgba(255,183,0,0.5);
-        }
-
-        .neon-red {
-            color: var(--neon-red);
-            text-shadow: 0 0 8px rgba(255,68,68,0.4);
-        }
-
-        .neon-purple {
-            color: var(--neon-purple);
-            text-shadow: 0 0 8px rgba(191,95,255,0.4);
-        }
-
-        .live-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--neon-green);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--neon-green);
-            animation: pulse 2s infinite;
-            display: inline-block;
-        }
-
-        @keyframes pulse {
-            0%,100% {
-                opacity: 1;
-                transform: scale(1)
-            }
-
-            50% {
-                opacity: .4;
-                transform: scale(.8)
-            }
-        }
-
-        .label {
-            font-size: 10px;
-            letter-spacing: .15em;
-            text-transform: uppercase;
-            color: #4a6080;
-            font-family: 'Share Tech Mono',monospace;
-        }
-
-        .big-temp {
-            font-size: 68px;
-            font-weight: 700;
-            line-height: 1;
-            letter-spacing: -2px;
-        }
-
-        .stat-row {
-            display: grid;
-            grid-template-columns: repeat(4,1fr);
-            gap: 12px;
-        }
-
-        @media(max-width:640px) {
-            .stat-row {
-                grid-template-columns: repeat(2,1fr)
-            }
-
-            .big-temp {
-                font-size: 50px
-            }
-        }
-
-        .progress-bar {
-            height: 4px;
-            background: rgba(255,255,255,.1);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 6px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg,var(--neon-cyan),var(--neon-green));
-            border-radius: 2px;
-            transition: width 1s ease;
-        }
-
-        .alert-banner {
-            background: linear-gradient(135deg,rgba(255,68,68,.15),rgba(255,68,68,.04));
-            border: 1px solid rgba(255,68,68,.4);
-            border-radius: 10px;
-            padding: 12px 16px;
-        }
-
-        .forecast-card {
-            background: var(--bg-card2);
-            border: 1px solid var(--border-dim);
-            border-radius: 10px;
-            padding: 12px 8px;
-            text-align: center;
-            flex: 1;
-            min-width: 0;
-            transition: all .3s;
-        }
-
-            .forecast-card:hover {
-                border-color: var(--border-bright);
-                background: rgba(0,245,255,.03);
-            }
-
-            .forecast-card.today {
-                border-color: rgba(0,245,255,.4);
-                background: rgba(0,245,255,.05);
-            }
-
-        .top-bar {
-            border-bottom: 1px solid var(--border-dim);
-            background: rgba(10,14,26,.95);
-            backdrop-filter: blur(10px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .tab-btn {
-            padding: 6px 18px;
-            border-radius: 6px;
-            font-family: 'Share Tech Mono',monospace;
-            font-size: 11px;
-            letter-spacing: .1em;
-            cursor: pointer;
-            border: 1px solid transparent;
-            background: transparent;
-            color: #4a6080;
-            transition: all .2s;
-        }
-
-            .tab-btn.active {
-                color: var(--neon-cyan);
-                border-color: rgba(0,245,255,.35);
-                background: rgba(0,245,255,.06);
-                text-shadow: 0 0 8px rgba(0,245,255,.4);
-            }
-
-            .tab-btn:hover:not(.active) {
-                color: #8ab0c0;
-            }
-
-        .tab-panel {
-            display: none;
-        }
-
-            .tab-panel.active {
-                display: block;
-            }
-
-        .crime-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-            .crime-table th {
-                text-align: left;
-                padding: 8px 10px;
-                font-family: 'Share Tech Mono',monospace;
-                font-size: 10px;
-                letter-spacing: .12em;
-                color: #4a6080;
-                border-bottom: 1px solid var(--border-dim);
-            }
-
-            .crime-table td {
-                padding: 9px 10px;
-                border-bottom: 1px solid rgba(255,255,255,.04);
-            }
-
-            .crime-table tr:hover td {
-                background: rgba(0,245,255,.03);
-            }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-family: 'Share Tech Mono',monospace;
-            letter-spacing: .08em;
-            font-weight: 600;
-        }
-
-        .badge-red {
-            background: rgba(255,68,68,.15);
-            color: #ff6666;
-            border: 1px solid rgba(255,68,68,.3);
-        }
-
-        .badge-amber {
-            background: rgba(255,183,0,.12);
-            color: #ffb700;
-            border: 1px solid rgba(255,183,0,.3);
-        }
-
-        .badge-purple {
-            background: rgba(191,95,255,.12);
-            color: #bf5fff;
-            border: 1px solid rgba(191,95,255,.3);
-        }
-
-        .badge-cyan {
-            background: rgba(0,245,255,.1);
-            color: #00d4e0;
-            border: 1px solid rgba(0,245,255,.25);
-        }
-
-        .badge-green {
-            background: rgba(0,255,136,.1);
-            color: #00cc6a;
-            border: 1px solid rgba(0,255,136,.25);
-        }
-
-        .spinner {
-            border: 2px solid rgba(0,245,255,.2);
-            border-top-color: var(--neon-cyan);
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            animation: spin .8s linear infinite;
-            display: inline-block;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg)
-            }
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3,1fr);
-            gap: 10px;
-        }
-
-        @media(max-width:500px) {
-            .summary-grid {
-                grid-template-columns: repeat(2,1fr)
-            }
-        }
-
-        .summary-tile {
-            background: var(--bg-card2);
-            border: 1px solid var(--border-dim);
-            border-radius: 10px;
-            padding: 14px;
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Hawkseye | 37013</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-cyan: #00f5ff;
+      --neon-green: #00ff88;
+      --neon-amber: #ffb700;
+      --neon-red: #ff4444;
+      --neon-purple: #bf5fff;
+      --bg-base: #0a0e1a;
+      --bg-card: #0f1628;
+      --bg-card2: #111827;
+      --border-dim: rgba(0,245,255,0.12);
+      --border-bright: rgba(0,245,255,0.45);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      font-family: 'Rajdhani', sans-serif;
+      color: #e0e8ff;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse at 15% 15%, rgba(0,245,255,0.04) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 85%, rgba(0,255,136,0.03) 0%, transparent 55%);
+    }
+    .mono { font-family: 'Share Tech Mono', monospace; }
+    .card { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 12px; transition: border-color 0.3s; }
+    .card:hover { border-color: var(--border-bright); }
+    .neon-text   { color: var(--neon-cyan);   text-shadow: 0 0 10px rgba(0,245,255,0.5); }
+    .neon-green  { color: var(--neon-green);  text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+    .neon-amber  { color: var(--neon-amber);  text-shadow: 0 0 10px rgba(255,183,0,0.5); }
+    .neon-red    { color: var(--neon-red);    text-shadow: 0 0 8px  rgba(255,68,68,0.4); }
+    .neon-purple { color: var(--neon-purple); text-shadow: 0 0 8px  rgba(191,95,255,0.4); }
+    .live-dot { width:8px; height:8px; background:var(--neon-green); border-radius:50%; box-shadow:0 0 8px var(--neon-green); animation:pulse 2s infinite; display:inline-block; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+    .label { font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:#4a6080; font-family:'Share Tech Mono',monospace; }
+    .big-temp { font-size:68px; font-weight:700; line-height:1; letter-spacing:-2px; }
+    .stat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    @media(max-width:640px){ .stat-row{grid-template-columns:repeat(2,1fr)} .big-temp{font-size:50px} }
+    .progress-bar { height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; margin-top:6px; }
+    .progress-fill { height:100%; background:linear-gradient(90deg,var(--neon-cyan),var(--neon-green)); border-radius:2px; transition:width 1s ease; }
+    .alert-banner { background:linear-gradient(135deg,rgba(255,68,68,.15),rgba(255,68,68,.04)); border:1px solid rgba(255,68,68,.4); border-radius:10px; padding:12px 16px; }
+    .forecast-card { background:var(--bg-card2); border:1px solid var(--border-dim); border-radius:10px; padding:12px 8px; text-align:center; flex:1; min-width:0; transition:all .3s; }
+    .forecast-card:hover { border-color:var(--border-bright); background:rgba(0,245,255,.03); }
+    .forecast-card.today { border-color:rgba(0,245,255,.4); background:rgba(0,245,255,.05); }
+    .top-bar { border-bottom:1px solid var(--border-dim); background:rgba(10,14,26,.95); backdrop-filter:blur(10px); position:sticky; top:0; z-index:100; }
+    .tab-btn { padding:6px 18px; border-radius:6px; font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:.1em; cursor:pointer; border:1px solid transparent; background:transparent; color:#4a6080; transition:all .2s; }
+    .tab-btn.active { color:var(--neon-cyan); border-color:rgba(0,245,255,.35); background:rgba(0,245,255,.06); text-shadow:0 0 8px rgba(0,245,255,.4); }
+    .tab-btn:hover:not(.active) { color:#8ab0c0; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .crime-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .crime-table th { text-align:left; padding:8px 10px; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:.12em; color:#4a6080; border-bottom:1px solid var(--border-dim); }
+    .crime-table td { padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.04); }
+    .crime-table tr:hover td { background:rgba(0,245,255,.03); }
+    .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-family:'Share Tech Mono',monospace; letter-spacing:.08em; font-weight:600; }
+    .badge-red    { background:rgba(255,68,68,.15);  color:#ff6666; border:1px solid rgba(255,68,68,.3); }
+    .badge-amber  { background:rgba(255,183,0,.12);  color:#ffb700; border:1px solid rgba(255,183,0,.3); }
+    .badge-purple { background:rgba(191,95,255,.12); color:#bf5fff; border:1px solid rgba(191,95,255,.3); }
+    .badge-cyan   { background:rgba(0,245,255,.1);   color:#00d4e0; border:1px solid rgba(0,245,255,.25); }
+    .badge-green  { background:rgba(0,255,136,.1);   color:#00cc6a; border:1px solid rgba(0,255,136,.25); }
+    .spinner { border:2px solid rgba(0,245,255,.2); border-top-color:var(--neon-cyan); border-radius:50%; width:22px; height:22px; animation:spin .8s linear infinite; display:inline-block; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    @media(max-width:500px){ .summary-grid{grid-template-columns:repeat(2,1fr)} }
+    .summary-tile { background:var(--bg-card2); border:1px solid var(--border-dim); border-radius:10px; padding:14px; text-align:center; }
+  </style>
 </head>
 <body>
 
-    <div class="top-bar px-5 py-3 flex items-center justify-between flex-wrap gap-2">
-        <div class="flex items-center gap-3">
-            <span class="text-xl font-bold tracking-widest neon-text">THE HAWKSEYE</span>
-            <span class="label">Antioch · Nashville · 37013</span>
+  <div class="top-bar px-5 py-3 flex items-center justify-between flex-wrap gap-2">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-bold tracking-widest neon-text">THE HAWKSEYE</span>
+      <span class="label">Antioch · Nashville · 37013</span>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <button class="tab-btn active" onclick="switchTab('weather',this)">🌤 WEATHER</button>
+      <button class="tab-btn" onclick="switchTab('crime',this)">🚨 CRIME</button>
+      <button class="tab-btn" onclick="switchTab('traffic',this)">🚗 TRAFFIC</button>
+      <span class="live-dot ml-2"></span>
+      <span class="label mono" id="lastUpdated">--:--</span>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 py-5 space-y-4">
+
+    <!-- WEATHER TAB -->
+    <div id="tab-weather" class="tab-panel active space-y-4">
+      <div id="alertBanner" class="alert-banner hidden">
+        <div class="flex items-start gap-3">
+          <span class="neon-red text-lg">⚠</span>
+          <div><div class="label neon-red mb-1">ACTIVE WEATHER ALERT</div><div id="alertText" class="text-sm text-red-300"></div></div>
         </div>
-        <div class="flex items-center gap-3 flex-wrap">
-            <button class="tab-btn active" onclick="switchTab('weather',this)">🌤 WEATHER</button>
-            <button class="tab-btn" onclick="switchTab('crime',this)">🚨 CRIME</button>
-            <button class="tab-btn" onclick="switchTab('traffic',this)">🚗 TRAFFIC</button>
-            <span class="live-dot ml-2"></span>
-            <span class="label mono" id="lastUpdated">--:--</span>
+      </div>
+      <div class="card p-6">
+        <div class="label mb-4">CURRENT CONDITIONS · ANTIOCH / SE NASHVILLE</div>
+        <div class="flex flex-wrap gap-6 items-end">
+          <div>
+            <div id="currentTemp" class="big-temp neon-text mono">--°F</div>
+            <div id="feelsLike" class="label mt-1">FEELS LIKE --°F</div>
+          </div>
+          <div class="flex-1 min-w-[180px]">
+            <div id="shortForecast" class="text-xl font-semibold mb-2">Loading…</div>
+            <div id="detailForecast" class="text-sm text-slate-400 leading-relaxed"></div>
+          </div>
+          <div class="text-5xl" id="weatherIcon">⏳</div>
         </div>
+      </div>
+      <div class="stat-row">
+        <div class="card p-4"><div class="label mb-2">HUMIDITY</div><div class="mono text-2xl font-bold" id="humidity">--%</div><div class="progress-bar"><div class="progress-fill" id="humidityBar" style="width:0%"></div></div></div>
+        <div class="card p-4"><div class="label mb-2">WIND</div><div class="mono text-2xl font-bold" id="wind">-- mph</div><div class="label mt-1" id="windDir">DIR: --</div></div>
+        <div class="card p-4"><div class="label mb-2">VISIBILITY</div><div class="mono text-2xl font-bold" id="visibility">-- mi</div><div class="progress-bar"><div class="progress-fill" id="visBar" style="width:0%"></div></div></div>
+        <div class="card p-4"><div class="label mb-2">DEWPOINT</div><div class="mono text-2xl font-bold" id="dewpoint">--°F</div><div class="label mt-1" id="dewDesc">--</div></div>
+      </div>
+      <div class="card p-6"><div class="label mb-4">HOURLY TEMPERATURE TREND · NEXT 12 HOURS</div><canvas id="tempChart" style="max-height:200px"></canvas></div>
+      <div class="card p-6"><div class="label mb-4">7-DAY FORECAST</div><div id="forecastCards" class="flex gap-2 overflow-x-auto pb-2"><div class="label">Loading…</div></div></div>
     </div>
 
-    <div class="max-w-5xl mx-auto px-4 py-5 space-y-4">
-
-        <!-- WEATHER TAB -->
-        <div id="tab-weather" class="tab-panel active space-y-4">
-            <div id="alertBanner" class="alert-banner hidden">
-                <div class="flex items-start gap-3">
-                    <span class="neon-red text-lg">⚠</span>
-                    <div><div class="label neon-red mb-1">ACTIVE WEATHER ALERT</div><div id="alertText" class="text-sm text-red-300"></div></div>
-                </div>
-            </div>
-            <div class="card p-6">
-                <div class="label mb-4">CURRENT CONDITIONS · ANTIOCH / SE NASHVILLE</div>
-                <div class="flex flex-wrap gap-6 items-end">
-                    <div>
-                        <div id="currentTemp" class="big-temp neon-text mono">--°F</div>
-                        <div id="feelsLike" class="label mt-1">FEELS LIKE --°F</div>
-                    </div>
-                    <div class="flex-1 min-w-[180px]">
-                        <div id="shortForecast" class="text-xl font-semibold mb-2">Loading…</div>
-                        <div id="detailForecast" class="text-sm text-slate-400 leading-relaxed"></div>
-                    </div>
-                    <div class="text-5xl" id="weatherIcon">⏳</div>
-                </div>
-            </div>
-            <div class="stat-row">
-                <div class="card p-4"><div class="label mb-2">HUMIDITY</div><div class="mono text-2xl font-bold" id="humidity">--%</div><div class="progress-bar"><div class="progress-fill" id="humidityBar" style="width:0%"></div></div></div>
-                <div class="card p-4"><div class="label mb-2">WIND</div><div class="mono text-2xl font-bold" id="wind">-- mph</div><div class="label mt-1" id="windDir">DIR: --</div></div>
-                <div class="card p-4"><div class="label mb-2">VISIBILITY</div><div class="mono text-2xl font-bold" id="visibility">-- mi</div><div class="progress-bar"><div class="progress-fill" id="visBar" style="width:0%"></div></div></div>
-                <div class="card p-4"><div class="label mb-2">DEWPOINT</div><div class="mono text-2xl font-bold" id="dewpoint">--°F</div><div class="label mt-1" id="dewDesc">--</div></div>
-            </div>
-            <div class="card p-6"><div class="label mb-4">HOURLY TEMPERATURE TREND · NEXT 12 HOURS</div><canvas id="tempChart" style="max-height:200px"></canvas></div>
-            <div class="card p-6"><div class="label mb-4">7-DAY FORECAST</div><div id="forecastCards" class="flex gap-2 overflow-x-auto pb-2"><div class="label">Loading…</div></div></div>
+    <!-- CRIME TAB -->
+    <div id="tab-crime" class="tab-panel space-y-4">
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div><div class="label mb-1">MNPD INCIDENTS · ZIP 37013 · LAST 30 DAYS</div><div class="text-xs text-slate-500">Source: Nashville Open Data · data.nashville.gov</div></div>
+          <div id="crimeSpinner" class="spinner"></div>
         </div>
-
-        <!-- CRIME TAB -->
-        <div id="tab-crime" class="tab-panel space-y-4">
-            <div class="card p-5">
-                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                    <div><div class="label mb-1">MNPD INCIDENTS · ZIP 37013 · LAST 30 DAYS</div><div class="text-xs text-slate-500">Source: Nashville Open Data · data.nashville.gov</div></div>
-                    <div id="crimeSpinner" class="spinner"></div>
-                </div>
-                <div id="crimeSummary" class="summary-grid mb-5"></div>
-                <div class="label mb-3">INCIDENTS BY TYPE</div>
-                <canvas id="crimeChart" style="max-height:240px;margin-bottom:20px"></canvas>
-                <div class="label mb-3">RECENT INCIDENTS</div>
-                <div style="overflow-x:auto">
-                    <table class="crime-table">
-                        <thead><tr><th>DATE</th><th>OFFENSE</th><th>CATEGORY</th><th>LOCATION</th><th>WEAPON</th></tr></thead>
-                        <tbody id="crimeTableBody"><tr><td colspan="5" class="label py-4 text-center">Loading…</td></tr></tbody>
-                    </table>
-                </div>
-            </div>
+        <div id="crimeSummary" class="summary-grid mb-5"></div>
+        <div class="label mb-3">INCIDENTS BY TYPE</div>
+        <canvas id="crimeChart" style="max-height:240px;margin-bottom:20px"></canvas>
+        <div class="label mb-3">RECENT INCIDENTS</div>
+        <div style="overflow-x:auto">
+          <table class="crime-table">
+            <thead><tr><th>DATE</th><th>OFFENSE</th><th>CATEGORY</th><th>LOCATION</th><th>WEAPON</th></tr></thead>
+            <tbody id="crimeTableBody"><tr><td colspan="5" class="label py-4 text-center">Loading…</td></tr></tbody>
+          </table>
         </div>
-
-        <!-- TRAFFIC TAB -->
-        <div id="tab-traffic" class="tab-panel space-y-4">
-            <div class="card p-5">
-                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                    <div><div class="label mb-1">TRAFFIC ACCIDENTS · ZIP 37013 · LAST 30 DAYS</div><div class="text-xs text-slate-500">Source: Nashville Open Data · data.nashville.gov</div></div>
-                    <div id="trafficSpinner" class="spinner"></div>
-                </div>
-                <div id="trafficSummary" class="summary-grid mb-5"></div>
-                <div class="label mb-3">ACCIDENTS BY DAY (LAST 14 DAYS)</div>
-                <canvas id="trafficChart" style="max-height:200px;margin-bottom:20px"></canvas>
-                <div class="label mb-3">RECENT ACCIDENTS</div>
-                <div style="overflow-x:auto">
-                    <table class="crime-table">
-                        <thead><tr><th>DATE / TIME</th><th>LOCATION</th><th>SEVERITY</th><th>INJURIES</th><th>FATALITIES</th><th>HIT & RUN</th></tr></thead>
-                        <tbody id="trafficTableBody"><tr><td colspan="6" class="label py-4 text-center">Loading…</td></tr></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="label text-center pb-4">WEATHER: NATIONAL WEATHER SERVICE · CRIME & TRAFFIC: NASHVILLE OPEN DATA PORTAL</div>
+      </div>
     </div>
 
-    <script>
-        const LAT = 36.0654, LON = -86.6884;
-        function cToF(c) { return Math.round(c * 9 / 5 + 32); }
-        function mpsToMph(m) { return Math.round(m * 2.237); }
-        function mToMi(m) { return (m / 1609.34).toFixed(1); }
-        function dewDesc(f) { return f >= 70 ? 'OPPRESSIVE' : f >= 60 ? 'HUMID' : f >= 50 ? 'COMFORTABLE' : 'DRY'; }
-        function getWeatherIcon(desc = '') {
-            const d = desc.toLowerCase();
-            if (d.includes('thunder')) return '⛈️'; if (d.includes('snow')) return '❄️';
-            if (d.includes('rain') || d.includes('shower')) return '🌧️'; if (d.includes('drizzle')) return '🌦️';
-            if (d.includes('fog') || d.includes('mist')) return '🌫️'; if (d.includes('wind')) return '💨';
-            if (d.includes('part') && d.includes('cloud')) return '⛅'; if (d.includes('cloud') || d.includes('overcast')) return '☁️';
-            if (d.includes('clear') || d.includes('sunny')) return '☀️'; return '🌡️';
-        }
-        function updateTime() { document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); }
-        function fmtDate(s) { if (!s) return '--'; const d = new Date(s); return isNaN(d) ? s.slice(0, 10) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }); }
-        function fmtDateTime(s) { if (!s) return '--'; const d = new Date(s); return isNaN(d) ? s.slice(0, 16).replace('T', ' ') : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }); }
+    <!-- TRAFFIC TAB -->
+    <div id="tab-traffic" class="tab-panel space-y-4">
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div><div class="label mb-1">TRAFFIC ACCIDENTS · ZIP 37013 · LAST 30 DAYS</div><div class="text-xs text-slate-500">Source: Nashville Open Data · data.nashville.gov</div></div>
+          <div id="trafficSpinner" class="spinner"></div>
+        </div>
+        <div id="trafficSummary" class="summary-grid mb-5"></div>
+        <div class="label mb-3">ACCIDENTS BY DAY (LAST 14 DAYS)</div>
+        <canvas id="trafficChart" style="max-height:200px;margin-bottom:20px"></canvas>
+        <div class="label mb-3">RECENT ACCIDENTS</div>
+        <div style="overflow-x:auto">
+          <table class="crime-table">
+            <thead><tr><th>DATE / TIME</th><th>LOCATION</th><th>SEVERITY</th><th>INJURIES</th><th>FATALITIES</th><th>HIT & RUN</th></tr></thead>
+            <tbody id="trafficTableBody"><tr><td colspan="6" class="label py-4 text-center">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-        function switchTab(name, btn) {
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-' + name).classList.add('active');
-            btn.classList.add('active');
-        }
+    <div class="label text-center pb-4">WEATHER: NATIONAL WEATHER SERVICE · CRIME & TRAFFIC: NASHVILLE OPEN DATA PORTAL</div>
+  </div>
 
-        let tempChart, crimeChart, trafficChart;
-        function buildTempChart(labels, temps) {
-            const ctx = document.getElementById('tempChart').getContext('2d');
-            if (tempChart) tempChart.destroy();
-            tempChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Temp °F', data: temps, borderColor: '#00f5ff', backgroundColor: 'rgba(0,245,255,0.08)', pointBackgroundColor: '#00f5ff', pointRadius: 4, tension: .4, fill: true }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#4a6080', font: { family: 'Share Tech Mono', size: 11 } }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { color: '#4a6080', font: { family: 'Share Tech Mono', size: 11 }, callback: v => v + '°' }, grid: { color: 'rgba(255,255,255,.04)' } } } } });
-        }
-        function buildCrimeChart(labels, counts) {
-            const ctx = document.getElementById('crimeChart').getContext('2d');
-            if (crimeChart) crimeChart.destroy();
-            const cols = ['#00f5ff', '#00ff88', '#ffb700', '#ff4444', '#bf5fff', '#00c4ff', '#ff8800', '#66ffcc'];
-            crimeChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Incidents', data: counts, backgroundColor: labels.map((_, i) => cols[i % cols.length] + '33'), borderColor: labels.map((_, i) => cols[i % cols.length]), borderWidth: 1, borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#4a6080', font: { family: 'Share Tech Mono', size: 11 } }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { color: '#c0d0e0', font: { family: 'Rajdhani', size: 12 } }, grid: { display: false } } } } });
-        }
-        function buildTrafficChart(labels, counts) {
-            const ctx = document.getElementById('trafficChart').getContext('2d');
-            if (trafficChart) trafficChart.destroy();
-            trafficChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Accidents', data: counts, backgroundColor: 'rgba(255,183,0,0.18)', borderColor: '#ffb700', borderWidth: 1, borderRadius: 4 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#4a6080', font: { family: 'Share Tech Mono', size: 10 } }, grid: { display: false } }, y: { ticks: { color: '#4a6080', font: { family: 'Share Tech Mono', size: 11 } }, grid: { color: 'rgba(255,255,255,.04)' } } } } });
-        }
+<script>
+const LAT=36.0654, LON=-86.6884;
+function cToF(c){return Math.round(c*9/5+32);}
+function mpsToMph(m){return Math.round(m*2.237);}
+function mToMi(m){return (m/1609.34).toFixed(1);}
+function dewDesc(f){return f>=70?'OPPRESSIVE':f>=60?'HUMID':f>=50?'COMFORTABLE':'DRY';}
+function getWeatherIcon(desc=''){
+  const d=desc.toLowerCase();
+  if(d.includes('thunder'))return'⛈️';if(d.includes('snow'))return'❄️';
+  if(d.includes('rain')||d.includes('shower'))return'🌧️';if(d.includes('drizzle'))return'🌦️';
+  if(d.includes('fog')||d.includes('mist'))return'🌫️';if(d.includes('wind'))return'💨';
+  if(d.includes('part')&&d.includes('cloud'))return'⛅';if(d.includes('cloud')||d.includes('overcast'))return'☁️';
+  if(d.includes('clear')||d.includes('sunny'))return'☀️';return'🌡️';
+}
+function updateTime(){document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
+function fmtDate(s){if(!s)return'--';const d=new Date(s);return isNaN(d)?s.slice(0,10):d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
+function fmtDateTime(s){if(!s)return'--';const d=new Date(s);return isNaN(d)?s.slice(0,16).replace('T',' '):d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true});}
 
-        // WEATHER
-        async function loadWeather() {
-            try {
-                const pt = (await (await fetch(`https://api.weather.gov/points/${LAT},${LON}`)).json()).properties;
-                const sts = (await (await fetch(pt.observationStations)).json());
-                const obs = (await (await fetch(sts.features[0].id + '/observations/latest')).json()).properties;
-                const tempF = obs.temperature.value !== null ? cToF(obs.temperature.value) : null;
-                const feelsF = obs.heatIndex.value !== null ? cToF(obs.heatIndex.value) : obs.windChill.value !== null ? cToF(obs.windChill.value) : tempF;
-                const hum = Math.round(obs.relativeHumidity.value ?? 0);
-                const wSpd = obs.windSpeed.value !== null ? mpsToMph(obs.windSpeed.value) : 0;
-                const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-                const dirL = obs.windDirection.value !== null ? dirs[Math.round(obs.windDirection.value / 45) % 8] : '--';
-                const visMi = obs.visibility.value !== null ? mToMi(obs.visibility.value) : null;
-                const dewF = obs.dewpoint.value !== null ? cToF(obs.dewpoint.value) : null;
-                const desc = obs.textDescription || '';
-                document.getElementById('currentTemp').textContent = tempF !== null ? tempF + '°F' : '--°F';
-                document.getElementById('feelsLike').textContent = `FEELS LIKE ${feelsF ?? '--'}°F`;
-                document.getElementById('shortForecast').textContent = desc || 'See forecast below';
-                document.getElementById('weatherIcon').textContent = getWeatherIcon(desc);
-                document.getElementById('humidity').textContent = hum + '%';
-                document.getElementById('humidityBar').style.width = hum + '%';
-                document.getElementById('wind').textContent = wSpd + ' mph';
-                document.getElementById('windDir').textContent = 'DIR: ' + dirL;
-                document.getElementById('visibility').textContent = visMi ? visMi + ' mi' : '--';
-                document.getElementById('visBar').style.width = visMi ? Math.min(100, (parseFloat(visMi) / 10) * 100) + '%' : '0%';
-                document.getElementById('dewpoint').textContent = dewF !== null ? dewF + '°F' : '--';
-                document.getElementById('dewDesc').textContent = dewF !== null ? dewDesc(dewF) : '--';
-                const hrs = (await (await fetch(pt.forecastHourly)).json()).properties.periods.slice(0, 12);
-                buildTempChart(hrs.map(h => new Date(h.startTime).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })), hrs.map(h => h.temperature));
-                if (hrs[0]) document.getElementById('detailForecast').textContent = hrs[0].detailedForecast || hrs[0].shortForecast || '';
-                const periods = (await (await fetch(pt.forecast)).json()).properties.periods;
-                const days = []; for (let i = 0; i < periods.length; i++)if (periods[i].isDaytime) days.push({ day: periods[i], night: periods[i + 1] });
-                const fcEl = document.getElementById('forecastCards'); fcEl.innerHTML = '';
-                days.slice(0, 7).forEach((pair, idx) => {
-                    const p = pair.day, n = pair.night, isToday = idx === 0, prec = p.probabilityOfPrecipitation?.value;
-                    const card = document.createElement('div'); card.className = 'forecast-card' + (isToday ? ' today' : '');
-                    card.innerHTML = `<div class="label mb-2">${isToday ? 'TODAY' : p.name.toUpperCase().split(' ')[0]}</div><div class="text-2xl mb-2">${getWeatherIcon(p.shortForecast)}</div><div class="mono font-bold text-sm neon-text">${p.temperature}°</div>${n ? `<div class="mono text-xs text-slate-500 mt-1">${n.temperature}°</div>` : ''} ${prec != null ? `<div class="label mt-2" style="color:#4a8080">💧${prec}%</div>` : ''}<div class="text-xs text-slate-500 mt-2 leading-tight">${p.shortForecast}</div>`;
-                    fcEl.appendChild(card);
-                });
-                const alerts = (await (await fetch(`https://api.weather.gov/alerts/active?point=${LAT},${LON}`)).json()).features;
-                if (alerts && alerts.length > 0) { document.getElementById('alertBanner').classList.remove('hidden'); document.getElementById('alertText').textContent = `${alerts[0].properties.event} — ${alerts[0].properties.headline}`; }
-                updateTime();
-            } catch (e) { console.error('Weather:', e); document.getElementById('shortForecast').textContent = 'Error loading weather'; }
-        }
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
 
-        // CRIME
-        function crimeBadge(cat) {
-            cat = (cat || '').toUpperCase();
-            if (['HOMICIDE', 'ROBBERY', 'AGGRAVATED ASSAULT', 'RAPE'].some(v => cat.includes(v))) return `<span class="badge badge-red">${cat}</span>`;
-            if (['BURGLARY', 'MOTOR VEHICLE THEFT', 'THEFT', 'LARCENY'].some(v => cat.includes(v))) return `<span class="badge badge-amber">${cat}</span>`;
-            if (cat.includes('DRUG') || cat.includes('NARCOTIC')) return `<span class="badge badge-purple">${cat}</span>`;
-            if (cat.includes('VANDAL') || cat.includes('ARSON')) return `<span class="badge badge-cyan">${cat}</span>`;
-            return `<span class="badge badge-green">${cat || 'OTHER'}</span>`;
-        }
-        async function loadCrime() {
-            const spinner = document.getElementById('crimeSpinner');
-            try {
-                const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-                // Nashville Police Incidents dataset (Socrata) - public, no key needed
-                const url = `https://data.nashville.gov/resource/2u6v-ujjs.json?zip_code=37013&$where=incident_occurred>='${since}'&$limit=200&$order=incident_occurred DESC`;
-                const data = await (await fetch(url)).json();
-                spinner.style.display = 'none';
-                if (!Array.isArray(data) || data.length === 0) {
-                    document.getElementById('crimeTableBody').innerHTML = '<tr><td colspan="5" class="label py-4 text-center">No incidents found for 37013 in this period.</td></tr>';
-                    return;
-                }
-                const total = data.length;
-                const violent = data.filter(r => ['HOMICIDE', 'ROBBERY', 'AGGRAVATED ASSAULT', 'RAPE'].some(v => (r.offense_description || r.ucr_description || '').toUpperCase().includes(v))).length;
-                const property = data.filter(r => ['BURGLARY', 'THEFT', 'MOTOR VEHICLE', 'LARCENY'].some(v => (r.offense_description || r.ucr_description || '').toUpperCase().includes(v))).length;
-                document.getElementById('crimeSummary').innerHTML = `
-          <div class="summary-tile"><div class="label mb-1">TOTAL INCIDENTS</div><div class="mono text-3xl font-bold neon-text">${total}</div></div>
-          <div class="summary-tile"><div class="label mb-1">VIOLENT CRIME</div><div class="mono text-3xl font-bold neon-red">${violent}</div></div>
-          <div class="summary-tile"><div class="label mb-1">PROPERTY CRIME</div><div class="mono text-3xl font-bold neon-amber">${property}</div></div>`;
-                const typeCounts = {};
-                data.forEach(r => { const t = (r.offense_description || r.ucr_description || 'UNKNOWN').toUpperCase(); typeCounts[t] = (typeCounts[t] || 0) + 1; });
-                const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-                buildCrimeChart(sorted.map(e => e[0]), sorted.map(e => e[1]));
-                document.getElementById('crimeTableBody').innerHTML = data.slice(0, 50).map(r => `
-          <tr>
-            <td class="mono text-xs">${fmtDate(r.incident_occurred || r.incident_reported)}</td>
-            <td class="font-semibold text-sm">${r.offense_description || r.ucr_description || '--'}</td>
-            <td>${crimeBadge(r.offense_category || r.ucr_description || '')}</td>
-            <td class="text-xs text-slate-400">${r.incident_location || r.block_address || '--'}</td>
-            <td class="text-xs text-slate-400">${r.weapon_description || '--'}</td>
-          </tr>`).join('');
-            } catch (e) {
-                spinner.style.display = 'none';
-                console.error('Crime:', e);
-                document.getElementById('crimeTableBody').innerHTML = `<tr><td colspan="5" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
-            }
-        }
+let tempChart,crimeChart,trafficChart;
+function buildTempChart(labels,temps){
+  const ctx=document.getElementById('tempChart').getContext('2d');
+  if(tempChart)tempChart.destroy();
+  tempChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Temp °F',data:temps,borderColor:'#00f5ff',backgroundColor:'rgba(0,245,255,0.08)',pointBackgroundColor:'#00f5ff',pointRadius:4,tension:.4,fill:true}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a6080',font:{family:'Share Tech Mono',size:11}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#4a6080',font:{family:'Share Tech Mono',size:11},callback:v=>v+'°'},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+function buildCrimeChart(labels,counts){
+  const ctx=document.getElementById('crimeChart').getContext('2d');
+  if(crimeChart)crimeChart.destroy();
+  const cols=['#00f5ff','#00ff88','#ffb700','#ff4444','#bf5fff','#00c4ff','#ff8800','#66ffcc'];
+  crimeChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Incidents',data:counts,backgroundColor:labels.map((_,i)=>cols[i%cols.length]+'33'),borderColor:labels.map((_,i)=>cols[i%cols.length]),borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a6080',font:{family:'Share Tech Mono',size:11}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#c0d0e0',font:{family:'Rajdhani',size:12}},grid:{display:false}}}}});
+}
+function buildTrafficChart(labels,counts){
+  const ctx=document.getElementById('trafficChart').getContext('2d');
+  if(trafficChart)trafficChart.destroy();
+  trafficChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Accidents',data:counts,backgroundColor:'rgba(255,183,0,0.18)',borderColor:'#ffb700',borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a6080',font:{family:'Share Tech Mono',size:10}},grid:{display:false}},y:{ticks:{color:'#4a6080',font:{family:'Share Tech Mono',size:11}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
 
-        // TRAFFIC
-        function sevBadge(inj, fat) {
-            const i = parseInt(inj) || 0, f = parseInt(fat) || 0;
-            if (f > 0) return `<span class="badge badge-red">FATAL</span>`;
-            if (i > 0) return `<span class="badge badge-amber">INJURY</span>`;
-            return `<span class="badge badge-green">PDO</span>`;
-        }
-        async function loadTraffic() {
-            const spinner = document.getElementById('trafficSpinner');
-            try {
-                const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-                // Nashville Traffic Accidents dataset (Socrata) ID: 6v6w-hpcw
-                const url = `https://data.nashville.gov/resource/6v6w-hpcw.json?zip_code=37013&$where=date_and_time>='${since}'&$limit=200&$order=date_and_time DESC`;
-                const data = await (await fetch(url)).json();
-                spinner.style.display = 'none';
-                if (!Array.isArray(data) || data.length === 0) {
-                    document.getElementById('trafficTableBody').innerHTML = '<tr><td colspan="6" class="label py-4 text-center">No accident records found.</td></tr>';
-                    return;
-                }
-                const total = data.length;
-                const injuries = data.reduce((s, r) => s + (parseInt(r.number_of_injuries) || 0), 0);
-                const hitrun = data.filter(r => (r.hit_and_run || '').toLowerCase() === 'yes').length;
-                document.getElementById('trafficSummary').innerHTML = `
-          <div class="summary-tile"><div class="label mb-1">TOTAL ACCIDENTS</div><div class="mono text-3xl font-bold neon-amber">${total}</div></div>
-          <div class="summary-tile"><div class="label mb-1">INJURIES</div><div class="mono text-3xl font-bold neon-red">${injuries}</div></div>
-          <div class="summary-tile"><div class="label mb-1">HIT & RUN</div><div class="mono text-3xl font-bold neon-purple">${hitrun}</div></div>`;
-                const dayCounts = {};
-                for (let i = 13; i >= 0; i--) { const d = new Date(Date.now() - i * 86400000); dayCounts[d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })] = 0; }
-                data.forEach(r => { if (!r.date_and_time) return; const key = new Date(r.date_and_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); if (key in dayCounts) dayCounts[key]++; });
-                buildTrafficChart(Object.keys(dayCounts), Object.values(dayCounts));
-                document.getElementById('trafficTableBody').innerHTML = data.slice(0, 50).map(r => `
-          <tr>
-            <td class="mono text-xs">${fmtDateTime(r.date_and_time)}</td>
-            <td class="text-xs text-slate-300">${r.street_address || r.location || '--'}</td>
-            <td>${sevBadge(r.number_of_injuries, r.number_of_fatalities)}</td>
-            <td class="mono text-center">${r.number_of_injuries || '0'}</td>
-            <td class="mono text-center ${parseInt(r.number_of_fatalities) > 0 ? 'neon-red' : ''}">${r.number_of_fatalities || '0'}</td>
-            <td class="text-xs text-center">${(r.hit_and_run || '').toLowerCase() === 'yes' ? '<span class="neon-red font-bold">YES</span>' : 'No'}</td>
-          </tr>`).join('');
-            } catch (e) {
-                spinner.style.display = 'none';
-                console.error('Traffic:', e);
-                document.getElementById('trafficTableBody').innerHTML = `<tr><td colspan="6" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
-            }
-        }
+// WEATHER
+async function loadWeather(){
+  try{
+    const pt=(await(await fetch(`https://api.weather.gov/points/${LAT},${LON}`)).json()).properties;
+    const sts=(await(await fetch(pt.observationStations)).json());
+    const obs=(await(await fetch(sts.features[0].id+'/observations/latest')).json()).properties;
+    const tempF=obs.temperature.value!==null?cToF(obs.temperature.value):null;
+    const feelsF=obs.heatIndex.value!==null?cToF(obs.heatIndex.value):obs.windChill.value!==null?cToF(obs.windChill.value):tempF;
+    const hum=Math.round(obs.relativeHumidity.value??0);
+    const wSpd=obs.windSpeed.value!==null?mpsToMph(obs.windSpeed.value):0;
+    const dirs=['N','NE','E','SE','S','SW','W','NW'];
+    const dirL=obs.windDirection.value!==null?dirs[Math.round(obs.windDirection.value/45)%8]:'--';
+    const visMi=obs.visibility.value!==null?mToMi(obs.visibility.value):null;
+    const dewF=obs.dewpoint.value!==null?cToF(obs.dewpoint.value):null;
+    const desc=obs.textDescription||'';
+    document.getElementById('currentTemp').textContent=tempF!==null?tempF+'°F':'--°F';
+    document.getElementById('feelsLike').textContent=`FEELS LIKE ${feelsF??'--'}°F`;
+    document.getElementById('shortForecast').textContent=desc||'See forecast below';
+    document.getElementById('weatherIcon').textContent=getWeatherIcon(desc);
+    document.getElementById('humidity').textContent=hum+'%';
+    document.getElementById('humidityBar').style.width=hum+'%';
+    document.getElementById('wind').textContent=wSpd+' mph';
+    document.getElementById('windDir').textContent='DIR: '+dirL;
+    document.getElementById('visibility').textContent=visMi?visMi+' mi':'--';
+    document.getElementById('visBar').style.width=visMi?Math.min(100,(parseFloat(visMi)/10)*100)+'%':'0%';
+    document.getElementById('dewpoint').textContent=dewF!==null?dewF+'°F':'--';
+    document.getElementById('dewDesc').textContent=dewF!==null?dewDesc(dewF):'--';
+    const hrs=(await(await fetch(pt.forecastHourly)).json()).properties.periods.slice(0,12);
+    buildTempChart(hrs.map(h=>new Date(h.startTime).toLocaleTimeString('en-US',{hour:'numeric',hour12:true})),hrs.map(h=>h.temperature));
+    if(hrs[0])document.getElementById('detailForecast').textContent=hrs[0].detailedForecast||hrs[0].shortForecast||'';
+    const periods=(await(await fetch(pt.forecast)).json()).properties.periods;
+    const days=[];for(let i=0;i<periods.length;i++)if(periods[i].isDaytime)days.push({day:periods[i],night:periods[i+1]});
+    const fcEl=document.getElementById('forecastCards');fcEl.innerHTML='';
+    days.slice(0,7).forEach((pair,idx)=>{
+      const p=pair.day,n=pair.night,isToday=idx===0,prec=p.probabilityOfPrecipitation?.value;
+      const card=document.createElement('div');card.className='forecast-card'+(isToday?' today':'');
+      card.innerHTML=`<div class="label mb-2">${isToday?'TODAY':p.name.toUpperCase().split(' ')[0]}</div><div class="text-2xl mb-2">${getWeatherIcon(p.shortForecast)}</div><div class="mono font-bold text-sm neon-text">${p.temperature}°</div>${n?`<div class="mono text-xs text-slate-500 mt-1">${n.temperature}°</div>`:''} ${prec!=null?`<div class="label mt-2" style="color:#4a8080">💧${prec}%</div>`:''}<div class="text-xs text-slate-500 mt-2 leading-tight">${p.shortForecast}</div>`;
+      fcEl.appendChild(card);
+    });
+    const alerts=(await(await fetch(`https://api.weather.gov/alerts/active?point=${LAT},${LON}`)).json()).features;
+    if(alerts&&alerts.length>0){document.getElementById('alertBanner').classList.remove('hidden');document.getElementById('alertText').textContent=`${alerts[0].properties.event} — ${alerts[0].properties.headline}`;}
+    updateTime();
+  }catch(e){console.error('Weather:',e);document.getElementById('shortForecast').textContent='Error loading weather';}
+}
 
-        loadWeather();
-        loadCrime();
-        loadTraffic();
-        setInterval(loadWeather, 5 * 60 * 1000);
-        setInterval(() => { loadCrime(); loadTraffic(); }, 15 * 60 * 1000);
-    </script>
+// CRIME
+function crimeBadge(cat){
+  cat=(cat||'').toUpperCase();
+  if(['HOMICIDE','ROBBERY','AGGRAVATED ASSAULT','RAPE'].some(v=>cat.includes(v)))return`<span class="badge badge-red">${cat}</span>`;
+  if(['BURGLARY','MOTOR VEHICLE THEFT','THEFT','LARCENY'].some(v=>cat.includes(v)))return`<span class="badge badge-amber">${cat}</span>`;
+  if(cat.includes('DRUG')||cat.includes('NARCOTIC'))return`<span class="badge badge-purple">${cat}</span>`;
+  if(cat.includes('VANDAL')||cat.includes('ARSON'))return`<span class="badge badge-cyan">${cat}</span>`;
+  return`<span class="badge badge-green">${cat||'OTHER'}</span>`;
+}
+async function loadCrime(){
+  const spinner=document.getElementById('crimeSpinner');
+  try{
+    const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10);
+    // Nashville Police Incidents dataset (Socrata) - public, no key needed
+    const url=`https://data.nashville.gov/resource/2u6v-ujjs.json?zip_code=37013&$where=incident_occurred>='${since}'&$limit=200&$order=incident_occurred DESC`;
+    const data=await(await fetch(url)).json();
+    spinner.style.display='none';
+    if(!Array.isArray(data)||data.length===0){
+      document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No incidents found for 37013 in this period.</td></tr>';
+      return;
+    }
+    const total=data.length;
+    const violent=data.filter(r=>['HOMICIDE','ROBBERY','AGGRAVATED ASSAULT','RAPE'].some(v=>(r.offense_description||r.ucr_description||'').toUpperCase().includes(v))).length;
+    const property=data.filter(r=>['BURGLARY','THEFT','MOTOR VEHICLE','LARCENY'].some(v=>(r.offense_description||r.ucr_description||'').toUpperCase().includes(v))).length;
+    document.getElementById('crimeSummary').innerHTML=`
+      <div class="summary-tile"><div class="label mb-1">TOTAL INCIDENTS</div><div class="mono text-3xl font-bold neon-text">${total}</div></div>
+      <div class="summary-tile"><div class="label mb-1">VIOLENT CRIME</div><div class="mono text-3xl font-bold neon-red">${violent}</div></div>
+      <div class="summary-tile"><div class="label mb-1">PROPERTY CRIME</div><div class="mono text-3xl font-bold neon-amber">${property}</div></div>`;
+    const typeCounts={};
+    data.forEach(r=>{const t=(r.offense_description||r.ucr_description||'UNKNOWN').toUpperCase();typeCounts[t]=(typeCounts[t]||0)+1;});
+    const sorted=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    buildCrimeChart(sorted.map(e=>e[0]),sorted.map(e=>e[1]));
+    document.getElementById('crimeTableBody').innerHTML=data.slice(0,50).map(r=>`
+      <tr>
+        <td class="mono text-xs">${fmtDate(r.incident_occurred||r.incident_reported)}</td>
+        <td class="font-semibold text-sm">${r.offense_description||r.ucr_description||'--'}</td>
+        <td>${crimeBadge(r.offense_category||r.ucr_description||'')}</td>
+        <td class="text-xs text-slate-400">${r.incident_location||r.block_address||'--'}</td>
+        <td class="text-xs text-slate-400">${r.weapon_description||'--'}</td>
+      </tr>`).join('');
+  }catch(e){
+    spinner.style.display='none';
+    console.error('Crime:',e);
+    document.getElementById('crimeTableBody').innerHTML=`<tr><td colspan="5" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
+  }
+}
+
+// TRAFFIC
+function sevBadge(inj,fat){
+  const i=parseInt(inj)||0,f=parseInt(fat)||0;
+  if(f>0)return`<span class="badge badge-red">FATAL</span>`;
+  if(i>0)return`<span class="badge badge-amber">INJURY</span>`;
+  return`<span class="badge badge-green">PDO</span>`;
+}
+async function loadTraffic(){
+  const spinner=document.getElementById('trafficSpinner');
+  try{
+    const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10);
+    // Nashville Traffic Accidents dataset (Socrata) ID: 6v6w-hpcw
+    const url=`https://data.nashville.gov/resource/6v6w-hpcw.json?zip_code=37013&$where=date_and_time>='${since}'&$limit=200&$order=date_and_time DESC`;
+    const data=await(await fetch(url)).json();
+    spinner.style.display='none';
+    if(!Array.isArray(data)||data.length===0){
+      document.getElementById('trafficTableBody').innerHTML='<tr><td colspan="6" class="label py-4 text-center">No accident records found.</td></tr>';
+      return;
+    }
+    const total=data.length;
+    const injuries=data.reduce((s,r)=>s+(parseInt(r.number_of_injuries)||0),0);
+    const hitrun=data.filter(r=>(r.hit_and_run||'').toLowerCase()==='yes').length;
+    document.getElementById('trafficSummary').innerHTML=`
+      <div class="summary-tile"><div class="label mb-1">TOTAL ACCIDENTS</div><div class="mono text-3xl font-bold neon-amber">${total}</div></div>
+      <div class="summary-tile"><div class="label mb-1">INJURIES</div><div class="mono text-3xl font-bold neon-red">${injuries}</div></div>
+      <div class="summary-tile"><div class="label mb-1">HIT & RUN</div><div class="mono text-3xl font-bold neon-purple">${hitrun}</div></div>`;
+    const dayCounts={};
+    for(let i=13;i>=0;i--){const d=new Date(Date.now()-i*86400000);dayCounts[d.toLocaleDateString('en-US',{month:'short',day:'numeric'})]=0;}
+    data.forEach(r=>{if(!r.date_and_time)return;const key=new Date(r.date_and_time).toLocaleDateString('en-US',{month:'short',day:'numeric'});if(key in dayCounts)dayCounts[key]++;});
+    buildTrafficChart(Object.keys(dayCounts),Object.values(dayCounts));
+    document.getElementById('trafficTableBody').innerHTML=data.slice(0,50).map(r=>`
+      <tr>
+        <td class="mono text-xs">${fmtDateTime(r.date_and_time)}</td>
+        <td class="text-xs text-slate-300">${r.street_address||r.location||'--'}</td>
+        <td>${sevBadge(r.number_of_injuries,r.number_of_fatalities)}</td>
+        <td class="mono text-center">${r.number_of_injuries||'0'}</td>
+        <td class="mono text-center ${parseInt(r.number_of_fatalities)>0?'neon-red':''}">${r.number_of_fatalities||'0'}</td>
+        <td class="text-xs text-center">${(r.hit_and_run||'').toLowerCase()==='yes'?'<span class="neon-red font-bold">YES</span>':'No'}</td>
+      </tr>`).join('');
+  }catch(e){
+    spinner.style.display='none';
+    console.error('Traffic:',e);
+    document.getElementById('trafficTableBody').innerHTML=`<tr><td colspan="6" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
+  }
+}
+
+loadWeather();
+loadCrime();
+loadTraffic();
+setInterval(loadWeather,5*60*1000);
+setInterval(()=>{loadCrime();loadTraffic();},15*60*1000);
+</script>
 </body>
 </html>
