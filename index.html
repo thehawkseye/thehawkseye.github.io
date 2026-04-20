@@ -128,8 +128,8 @@
       <div class="card p-5">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
-            <div class="label mb-1">MNPD INCIDENTS · ZIP 37013 · LAST 30 DAYS</div>
-            <div class="text-xs text-slate-500">Source: Nashville Open Data · data.nashville.gov</div>
+            <div class="label mb-1">CRIME & SAFETY 311 REQUESTS · ZIP 37013 · LAST 30 DAYS</div>
+            <div class="text-xs text-slate-500">Source: hubNashville 311 · data.nashville.gov</div>
           </div>
           <div id="crimeSpinner" class="spinner"></div>
         </div>
@@ -151,8 +151,8 @@
       <div class="card p-5">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
-            <div class="label mb-1">TRAFFIC ACCIDENTS · ZIP 37013 · LAST 30 DAYS</div>
-            <div class="text-xs text-slate-500">Source: Nashville Open Data · data.nashville.gov</div>
+            <div class="label mb-1">ROAD & TRAFFIC 311 REQUESTS · ZIP 37013 · LAST 30 DAYS</div>
+            <div class="text-xs text-slate-500">Source: hubNashville 311 · data.nashville.gov</div>
           </div>
           <div id="trafficSpinner" class="spinner"></div>
         </div>
@@ -176,16 +176,42 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 const LAT = 36.0654, LON = -86.6884;
 
-// ArcGIS FeatureServer endpoints — public, no auth, proper CORS
-// Police incidents dataset ID from Nashville ArcGIS Hub
-const CRIME_URL  = 'https://services2.arcgis.com/HdTo6HJqh92wn4D8/arcgis/rest/services/Metro_Nashville_Police_Department_Incidents/FeatureServer/0/query';
-// Traffic accidents dataset ID from Nashville ArcGIS Hub
-const TRAFFIC_URL = 'https://services2.arcgis.com/HdTo6HJqh92wn4D8/arcgis/rest/services/Traffic_Accidents/FeatureServer/0/query';
+// Nashville 311 Open Data — truly public, no auth, proper CORS
+// Socrata dataset: hubNashville 311 requests (2024 + 2025 combined via both endpoints)
+const BASE_311 = 'https://data.nashville.gov/resource';
+const DS_2024  = 'vxjk-bsnd.json'; // hubNashville 311 2024
+const DS_2025  = 'rqkp-5dj8.json'; // hubNashville 311 2025
 
 async function fetchJSON(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+// Fetch 311 requests filtered by zip and category keywords, last N days
+async function fetch311(keywords, days=30, limit=200) {
+  const since = new Date(Date.now()-days*24*60*60*1000).toISOString().slice(0,10);
+  const kwFilter = keywords.map(k=>`request_type_title like '%${k}%'`).join(' OR ');
+  const where = `zip='37013' AND subrequest_date>='${since}T00:00:00' AND (${kwFilter})`;
+  const params = new URLSearchParams({ $where:where, $limit:limit, $order:'subrequest_date DESC' });
+
+  // Try 2025 dataset first, fall back to 2024
+  try {
+    const d = await fetchJSON(`${BASE_311}/${DS_2025}?${params}`);
+    if(Array.isArray(d) && d.length > 0) return d;
+  } catch(e) {}
+  try {
+    const d = await fetchJSON(`${BASE_311}/${DS_2024}?${params}`);
+    if(Array.isArray(d) && d.length > 0) return d;
+  } catch(e) {}
+
+  // Last resort: no zip filter, just category + recent
+  const params2 = new URLSearchParams({
+    $where: `subrequest_date>='${since}T00:00:00' AND (${kwFilter})`,
+    $limit: limit,
+    $order: 'subrequest_date DESC'
+  });
+  return fetchJSON(`${BASE_311}/${DS_2025}?${params2}`);
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -300,126 +326,114 @@ async function loadWeather(){
   }catch(e){console.error('Weather:',e);document.getElementById('shortForecast').textContent='Error loading weather';}
 }
 
-// ── CRIME (via allorigins proxy) ─────────────────────────────────
-function crimeBadge(cat){
-  cat=(cat||'').toUpperCase();
-  if(['HOMICIDE','ROBBERY','AGGRAVATED ASSAULT','RAPE'].some(v=>cat.includes(v)))return`<span class="badge badge-red">${cat}</span>`;
-  if(['BURGLARY','MOTOR VEHICLE','THEFT','LARCENY'].some(v=>cat.includes(v)))return`<span class="badge badge-amber">${cat}</span>`;
-  if(cat.includes('DRUG')||cat.includes('NARCOTIC'))return`<span class="badge badge-purple">${cat}</span>`;
-  if(cat.includes('VANDAL')||cat.includes('ARSON'))return`<span class="badge badge-cyan">${cat}</span>`;
-  return`<span class="badge badge-green">${cat||'OTHER'}</span>`;
+// ── CRIME / SAFETY (Nashville 311) ───────────────────────────────
+function reqBadge(type) {
+  const t = (type||'').toUpperCase();
+  if(['ABANDONED','VEHICLE','JUNK'].some(v=>t.includes(v)))   return`<span class="badge badge-amber">${type}</span>`;
+  if(['NOISE','DISTURBANCE','ANIMAL'].some(v=>t.includes(v))) return`<span class="badge badge-purple">${type}</span>`;
+  if(['LITTER','DUMP','TRASH'].some(v=>t.includes(v)))        return`<span class="badge badge-cyan">${type}</span>`;
+  if(['GRAFFITI','VANDAL'].some(v=>t.includes(v)))            return`<span class="badge badge-red">${type}</span>`;
+  return`<span class="badge badge-green">${type||'OTHER'}</span>`;
 }
 
 async function loadCrime(){
   const spinner=document.getElementById('crimeSpinner');
   try{
-    const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10).replace(/-/g,'');
-    const params=new URLSearchParams({
-      where: `1=1`,
-      outFields: 'incident_occurred,offense_description,offense_category,incident_location,weapon_description',
-      resultRecordCount: 200,
-      orderByFields: 'incident_occurred DESC',
-      f: 'json'
-    });
-    const json=await fetchJSON(`${CRIME_URL}?${params}`);
-    const data=(json.features||[]).map(f=>f.attributes);
-      console.log('CRIME SAMPLE:', JSON.stringify(data[0]));
+    // Pull safety/nuisance-related 311 categories
+    const keywords=['Abandoned','Noise','Animal','Graffiti','Vandal','Litter','Dumping','Junk','Disturbance'];
+    const data = await fetch311(keywords, 30, 200);
+
     spinner.style.display='none';
     if(!Array.isArray(data)||data.length===0){
-      document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No incidents found for 37013 in this period.</td></tr>';
+      document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No 311 safety requests found for 37013.</td></tr>';
       return;
     }
 
     const total=data.length;
-    const violent=data.filter(r=>['HOMICIDE','ROBBERY','AGGRAVATED ASSAULT','RAPE'].some(v=>(r.offense_description||r.ucr_description||'').toUpperCase().includes(v))).length;
-    const property=data.filter(r=>['BURGLARY','THEFT','MOTOR VEHICLE','LARCENY'].some(v=>(r.offense_description||r.ucr_description||'').toUpperCase().includes(v))).length;
+    const abandoned=data.filter(r=>(r.request_type_title||'').toUpperCase().includes('ABANDON')).length;
+    const noise=data.filter(r=>(r.request_type_title||'').toUpperCase().includes('NOISE')).length;
 
     document.getElementById('crimeSummary').innerHTML=`
-      <div class="summary-tile"><div class="label mb-1">TOTAL INCIDENTS</div><div class="mono text-3xl font-bold neon-text">${total}</div></div>
-      <div class="summary-tile"><div class="label mb-1">VIOLENT CRIME</div><div class="mono text-3xl font-bold neon-red">${violent}</div></div>
-      <div class="summary-tile"><div class="label mb-1">PROPERTY CRIME</div><div class="mono text-3xl font-bold neon-amber">${property}</div></div>`;
+      <div class="summary-tile"><div class="label mb-1">TOTAL REQUESTS</div><div class="mono text-3xl font-bold neon-text">${total}</div></div>
+      <div class="summary-tile"><div class="label mb-1">ABANDONED VEHICLES</div><div class="mono text-3xl font-bold neon-amber">${abandoned}</div></div>
+      <div class="summary-tile"><div class="label mb-1">NOISE / DISTURBANCE</div><div class="mono text-3xl font-bold neon-purple">${noise}</div></div>`;
 
     const typeCounts={};
-    data.forEach(r=>{const t=(r.offense_description||r.ucr_description||'UNKNOWN').toUpperCase();typeCounts[t]=(typeCounts[t]||0)+1;});
+    data.forEach(r=>{const t=(r.request_type_title||'UNKNOWN');typeCounts[t]=(typeCounts[t]||0)+1;});
     const sorted=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
     buildCrimeChart(sorted.map(e=>e[0]),sorted.map(e=>e[1]));
 
     document.getElementById('crimeTableBody').innerHTML=data.slice(0,50).map(r=>`
       <tr>
-        <td class="mono text-xs">${fmtDate(r.incident_occurred)}</td>
-        <td class="font-semibold text-sm">${r.offense_description||'--'}</td>
-        <td>${crimeBadge(r.offense_category||r.offense_description||'')}</td>
-        <td class="text-xs text-slate-400">${r.incident_location||'--'}</td>
-        <td class="text-xs text-slate-400">${r.weapon_description||'--'}</td>
+        <td class="mono text-xs">${fmtDate(r.subrequest_date||r.date_time_submitted)}</td>
+        <td class="font-semibold text-sm">${r.request_type_title||'--'}</td>
+        <td>${reqBadge(r.request_type_title||'')}</td>
+        <td class="text-xs text-slate-400">${r.address||'--'}</td>
+        <td class="text-xs text-slate-400">${r.status||'--'}</td>
       </tr>`).join('');
   }catch(e){
     spinner.style.display='none';
-    console.error('Crime:',e);
+    console.error('Crime/311:',e);
     document.getElementById('crimeTableBody').innerHTML=`<tr><td colspan="5" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
   }
 }
 
-// ── TRAFFIC (via allorigins proxy) ───────────────────────────────
-function sevBadge(inj,fat){
-  if(parseInt(fat)>0)return`<span class="badge badge-red">FATAL</span>`;
-  if(parseInt(inj)>0)return`<span class="badge badge-amber">INJURY</span>`;
-  return`<span class="badge badge-green">PDO</span>`;
+// ── TRAFFIC / ROAD (Nashville 311) ───────────────────────────────
+function roadBadge(type) {
+  const t = (type||'').toUpperCase();
+  if(t.includes('POTHOLE'))   return`<span class="badge badge-red">${type}</span>`;
+  if(t.includes('SIGNAL')||t.includes('LIGHT')) return`<span class="badge badge-amber">${type}</span>`;
+  if(t.includes('SIGN'))      return`<span class="badge badge-cyan">${type}</span>`;
+  if(t.includes('SIDEWALK')||t.includes('CURB')) return`<span class="badge badge-purple">${type}</span>`;
+  return`<span class="badge badge-green">${type||'OTHER'}</span>`;
 }
 
 async function loadTraffic(){
   const spinner=document.getElementById('trafficSpinner');
   try{
-    const since=new Date(Date.now()-30*24*60*60*1000).toISOString().slice(0,10);
-    const params=new URLSearchParams({
-      where: `1=1`,
-      outFields: 'date_and_time,street_address,number_of_injuries,number_of_fatalities,hit_and_run',
-      resultRecordCount: 200,
-      orderByFields: 'date_and_time DESC',
-      f: 'json'
-    });
-    const json=await fetchJSON(`${TRAFFIC_URL}?${params}`);
-    const data=(json.features||[]).map(f=>f.attributes);
-      console.log('TRAFFIC SAMPLE:', JSON.stringify(data[0]));
+    const keywords=['Pothole','Traffic Signal','Street Light','Road','Sign','Sidewalk','Curb','Pavement','Street'];
+    const data = await fetch311(keywords, 30, 200);
+
     spinner.style.display='none';
     if(!Array.isArray(data)||data.length===0){
-      document.getElementById('trafficTableBody').innerHTML='<tr><td colspan="6" class="label py-4 text-center">No accident records found.</td></tr>';
+      document.getElementById('trafficTableBody').innerHTML='<tr><td colspan="6" class="label py-4 text-center">No 311 road requests found for 37013.</td></tr>';
       return;
     }
 
     const total=data.length;
-    const injuries=data.reduce((s,r)=>s+(parseInt(r.number_of_injuries)||0),0);
-    const hitrun=data.filter(r=>(r.hit_and_run||'').toLowerCase()==='yes').length;
+    const potholes=data.filter(r=>(r.request_type_title||'').toUpperCase().includes('POTHOLE')).length;
+    const signals=data.filter(r=>{const t=(r.request_type_title||'').toUpperCase();return t.includes('SIGNAL')||t.includes('LIGHT');}).length;
 
     document.getElementById('trafficSummary').innerHTML=`
-      <div class="summary-tile"><div class="label mb-1">TOTAL ACCIDENTS</div><div class="mono text-3xl font-bold neon-amber">${total}</div></div>
-      <div class="summary-tile"><div class="label mb-1">INJURIES</div><div class="mono text-3xl font-bold neon-red">${injuries}</div></div>
-      <div class="summary-tile"><div class="label mb-1">HIT & RUN</div><div class="mono text-3xl font-bold neon-purple">${hitrun}</div></div>`;
+      <div class="summary-tile"><div class="label mb-1">TOTAL REQUESTS</div><div class="mono text-3xl font-bold neon-amber">${total}</div></div>
+      <div class="summary-tile"><div class="label mb-1">POTHOLES</div><div class="mono text-3xl font-bold neon-red">${potholes}</div></div>
+      <div class="summary-tile"><div class="label mb-1">SIGNALS / LIGHTS</div><div class="mono text-3xl font-bold neon-cyan">${signals}</div></div>`;
 
+    // Build last-14-day chart
     const dayCounts={};
     for(let i=13;i>=0;i--){
       const d=new Date(Date.now()-i*86400000);
       dayCounts[d.toLocaleDateString('en-US',{month:'short',day:'numeric'})]=0;
     }
     data.forEach(r=>{
-      if(!r.date_and_time)return;
-      // ArcGIS returns epoch ms as a number
-      const key=new Date(typeof r.date_and_time==='number'?r.date_and_time:r.date_and_time).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      const raw=r.subrequest_date||r.date_time_submitted;
+      if(!raw)return;
+      const key=new Date(raw).toLocaleDateString('en-US',{month:'short',day:'numeric'});
       if(key in dayCounts)dayCounts[key]++;
     });
     buildTrafficChart(Object.keys(dayCounts),Object.values(dayCounts));
 
     document.getElementById('trafficTableBody').innerHTML=data.slice(0,50).map(r=>`
       <tr>
-        <td class="mono text-xs">${fmtDateTime(r.date_and_time)}</td>
-        <td class="text-xs text-slate-300">${r.street_address||r.location||'--'}</td>
-        <td>${sevBadge(r.number_of_injuries,r.number_of_fatalities)}</td>
-        <td class="mono text-center">${r.number_of_injuries||'0'}</td>
-        <td class="mono text-center ${parseInt(r.number_of_fatalities)>0?'neon-red':''}">${r.number_of_fatalities||'0'}</td>
-        <td class="text-xs text-center">${(r.hit_and_run||'').toLowerCase()==='yes'?'<span class="neon-red font-bold">YES</span>':'No'}</td>
+        <td class="mono text-xs">${fmtDateTime(r.subrequest_date||r.date_time_submitted)}</td>
+        <td class="text-xs text-slate-300">${r.address||'--'}</td>
+        <td>${roadBadge(r.request_type_title||'')}</td>
+        <td class="text-xs" colspan="2">${r.request_type_title||'--'}</td>
+        <td class="text-xs text-slate-400">${r.status||'--'}</td>
       </tr>`).join('');
   }catch(e){
     spinner.style.display='none';
-    console.error('Traffic:',e);
+    console.error('Traffic/311:',e);
     document.getElementById('trafficTableBody').innerHTML=`<tr><td colspan="6" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
   }
 }
