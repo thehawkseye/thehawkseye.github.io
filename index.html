@@ -188,6 +188,12 @@ async function fetchJSON(url) {
   return res.json();
 }
 
+// Route Nashville API calls through our Netlify proxy to bypass CORS
+function nashvilleAPI(dataset, params) {
+  const base = `https://data.nashville.gov/resource/${dataset}?${params}`;
+  return `/.netlify/functions/proxy?url=${encodeURIComponent(base)}`;
+}
+
 // Fetch 311 requests filtered by zip and category keywords, last N days
 async function fetch311(keywords, days=30, limit=200) {
   const since = new Date(Date.now()-days*24*60*60*1000).toISOString().slice(0,10);
@@ -197,21 +203,21 @@ async function fetch311(keywords, days=30, limit=200) {
 
   // Try 2025 dataset first, fall back to 2024
   try {
-    const d = await fetchJSON(`${BASE_311}/${DS_2025}?${params}`);
+    const d = await fetchJSON(nashvilleAPI(DS_2025, params));
     if(Array.isArray(d) && d.length > 0) return d;
   } catch(e) {}
   try {
-    const d = await fetchJSON(`${BASE_311}/${DS_2024}?${params}`);
+    const d = await fetchJSON(nashvilleAPI(DS_2024, params));
     if(Array.isArray(d) && d.length > 0) return d;
   } catch(e) {}
 
-  // Last resort: no zip filter, just category + recent
+  // Last resort: no zip filter
   const params2 = new URLSearchParams({
     $where: `subrequest_date>='${since}T00:00:00' AND (${kwFilter})`,
     $limit: limit,
     $order: 'subrequest_date DESC'
   });
-  return fetchJSON(`${BASE_311}/${DS_2025}?${params2}`);
+  return fetchJSON(nashvilleAPI(DS_2025, params2));
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────
