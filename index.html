@@ -176,11 +176,9 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 const LAT = 36.0654, LON = -86.6884;
 
-// Nashville 311 Open Data — truly public, no auth, proper CORS
-// Socrata dataset: hubNashville 311 requests (2024 + 2025 combined via both endpoints)
+// Nashville 311 Open Data — correct Socrata dataset IDs
 const BASE_311 = 'https://data.nashville.gov/resource';
-const DS_2024  = 'vxjk-bsnd.json'; // hubNashville 311 2024
-const DS_2025  = 'rqkp-5dj8.json'; // hubNashville 311 2025
+const DS_311   = '7qhx-rexh.json'; // hubNashville 311 Service Requests (all years)
 
 async function fetchJSON(url) {
   const res = await fetch(url);
@@ -198,26 +196,9 @@ function nashvilleAPI(dataset, params) {
 async function fetch311(keywords, days=30, limit=200) {
   const since = new Date(Date.now()-days*24*60*60*1000).toISOString().slice(0,10);
   const kwFilter = keywords.map(k=>`request_type_title like '%${k}%'`).join(' OR ');
-  const where = `zip='37013' AND subrequest_date>='${since}T00:00:00' AND (${kwFilter})`;
-  const params = new URLSearchParams({ $where:where, $limit:limit, $order:'subrequest_date DESC' });
-
-  // Try 2025 dataset first, fall back to 2024
-  try {
-    const d = await fetchJSON(nashvilleAPI(DS_2025, params));
-    if(Array.isArray(d) && d.length > 0) return d;
-  } catch(e) {}
-  try {
-    const d = await fetchJSON(nashvilleAPI(DS_2024, params));
-    if(Array.isArray(d) && d.length > 0) return d;
-  } catch(e) {}
-
-  // Last resort: no zip filter
-  const params2 = new URLSearchParams({
-    $where: `subrequest_date>='${since}T00:00:00' AND (${kwFilter})`,
-    $limit: limit,
-    $order: 'subrequest_date DESC'
-  });
-  return fetchJSON(nashvilleAPI(DS_2025, params2));
+  const where = `zip_code='37013' AND date_time_submitted>='${since}T00:00:00' AND (${kwFilter})`;
+  const params = new URLSearchParams({ $where:where, $limit:limit, $order:'date_time_submitted DESC' });
+  return fetchJSON(nashvilleAPI(DS_311, params));
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -371,10 +352,10 @@ async function loadCrime(){
 
     document.getElementById('crimeTableBody').innerHTML=data.slice(0,50).map(r=>`
       <tr>
-        <td class="mono text-xs">${fmtDate(r.subrequest_date||r.date_time_submitted)}</td>
+        <td class="mono text-xs">${fmtDate(r.date_time_submitted)}</td>
         <td class="font-semibold text-sm">${r.request_type_title||'--'}</td>
         <td>${reqBadge(r.request_type_title||'')}</td>
-        <td class="text-xs text-slate-400">${r.address||'--'}</td>
+        <td class="text-xs text-slate-400">${r.mapped_location_address||r.address||'--'}</td>
         <td class="text-xs text-slate-400">${r.status||'--'}</td>
       </tr>`).join('');
   }catch(e){
@@ -422,7 +403,7 @@ async function loadTraffic(){
       dayCounts[d.toLocaleDateString('en-US',{month:'short',day:'numeric'})]=0;
     }
     data.forEach(r=>{
-      const raw=r.subrequest_date||r.date_time_submitted;
+      const raw=r.date_time_submitted;
       if(!raw)return;
       const key=new Date(raw).toLocaleDateString('en-US',{month:'short',day:'numeric'});
       if(key in dayCounts)dayCounts[key]++;
@@ -431,8 +412,8 @@ async function loadTraffic(){
 
     document.getElementById('trafficTableBody').innerHTML=data.slice(0,50).map(r=>`
       <tr>
-        <td class="mono text-xs">${fmtDateTime(r.subrequest_date||r.date_time_submitted)}</td>
-        <td class="text-xs text-slate-300">${r.address||'--'}</td>
+        <td class="mono text-xs">${fmtDateTime(r.date_time_submitted)}</td>
+        <td class="text-xs text-slate-300">${r.mapped_location_address||r.address||'--'}</td>
         <td>${roadBadge(r.request_type_title||'')}</td>
         <td class="text-xs" colspan="2">${r.request_type_title||'--'}</td>
         <td class="text-xs text-slate-400">${r.status||'--'}</td>
