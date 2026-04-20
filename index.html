@@ -178,7 +178,7 @@ const LAT = 36.0654, LON = -86.6884;
 
 // FBI Crime Data API — Nashville MNPD
 const FBI_KEY  = 'kizdOTnUyZszPBLGvX44J7n0VKlQkY2ykP79LvJG';
-const FBI_BASE = 'https://api.usa.gov/crime/fbi/cde';
+const FBI_BASE = 'https://api.usa.gov/crime/fbi/sapi';
 const MNPD_ORI = 'TN0370100';
 
 // USGS Cumberland River gauge at Nashville: site 03431500
@@ -307,14 +307,14 @@ async function loadCrime(){
   const spinner=document.getElementById('crimeSpinner');
   try{
     const currentYear = new Date().getFullYear();
-    const prevYear = currentYear - 1;
+    const fromYear = currentYear - 5;
 
-    // Fetch offense counts for Nashville MNPD for last 2 years
-    const url = `${FBI_BASE}/agency/offenses/${MNPD_ORI}/all?from=${prevYear}&to=${currentYear}&API_KEY=${FBI_KEY}`;
+    // Correct SAPI endpoint: summarized offense counts by agency
+    const url = `${FBI_BASE}/api/summarized/agencies/${MNPD_ORI}/all/${fromYear}/${currentYear}?API_KEY=${FBI_KEY}`;
     const json = await fetchJSON(url);
 
     spinner.style.display='none';
-    const results = json.data || [];
+    const results = (json.results || json.data || []);
     if(!results.length){
       document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No FBI crime data found.</td></tr>';
       return;
