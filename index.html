@@ -83,7 +83,7 @@
     <div class="flex items-center gap-3 flex-wrap">
       <button class="tab-btn active" onclick="switchTab('weather',this)">🌤 WEATHER</button>
       <button class="tab-btn" onclick="switchTab('crime',this)">🚨 CRIME</button>
-      <button class="tab-btn" onclick="switchTab('traffic',this)">🚗 TRAFFIC</button>
+      <button class="tab-btn" onclick="switchTab('traffic',this)">🌊 RIVER</button>
       <span class="live-dot ml-2"></span>
       <span class="label mono" id="lastUpdated">--:--</span>
     </div>
@@ -128,8 +128,8 @@
       <div class="card p-5">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
-            <div class="label mb-1">CRIME & SAFETY 311 REQUESTS · ZIP 37013 · LAST 30 DAYS</div>
-            <div class="text-xs text-slate-500">Source: hubNashville 311 · data.nashville.gov</div>
+            <div class="label mb-1">NASHVILLE MNPD CRIME STATS · FBI UNIFORM CRIME REPORTING</div>
+            <div class="text-xs text-slate-500">Source: FBI Crime Data API · api.usa.gov/crime/fbi/cde</div>
           </div>
           <div id="crimeSpinner" class="spinner"></div>
         </div>
@@ -139,7 +139,7 @@
         <div class="label mb-3">RECENT INCIDENTS</div>
         <div style="overflow-x:auto">
           <table class="data-table">
-            <thead><tr><th>DATE</th><th>OFFENSE</th><th>CATEGORY</th><th>LOCATION</th><th>WEAPON</th></tr></thead>
+            <thead><tr><th>YEAR</th><th>VIOLENT CRIME</th><th>HOMICIDE</th><th>ROBBERY</th><th>PROPERTY CRIME</th></tr></thead>
             <tbody id="crimeTableBody"><tr><td colspan="5" class="label py-4 text-center">Loading…</td></tr></tbody>
           </table>
         </div>
@@ -151,8 +151,8 @@
       <div class="card p-5">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
-            <div class="label mb-1">ROAD & TRAFFIC 311 REQUESTS · ZIP 37013 · LAST 30 DAYS</div>
-            <div class="text-xs text-slate-500">Source: hubNashville 311 · data.nashville.gov</div>
+            <div class="label mb-1">CUMBERLAND RIVER GAUGE · NASHVILLE · USGS 03431500</div>
+            <div class="text-xs text-slate-500">Source: USGS National Water Information System</div>
           </div>
           <div id="trafficSpinner" class="spinner"></div>
         </div>
@@ -176,29 +176,18 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 const LAT = 36.0654, LON = -86.6884;
 
-// Nashville 311 Open Data — correct Socrata dataset IDs
-const BASE_311 = 'https://data.nashville.gov/resource';
-const DS_311   = '7qhx-rexh.json'; // hubNashville 311 Service Requests (all years)
+// FBI Crime Data API — Nashville MNPD
+const FBI_KEY  = 'kizdOTnUyZszPBLGvX44J7n0VKlQkY2ykP79LvJG';
+const FBI_BASE = 'https://api.usa.gov/crime/fbi/cde';
+const MNPD_ORI = 'TN0370100';
+
+// USGS Cumberland River gauge at Nashville: site 03431500
+const USGS_URL = 'https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03431500&parameterCd=00060,00065&siteStatus=all';
 
 async function fetchJSON(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
-}
-
-// Route Nashville API calls through our Netlify proxy to bypass CORS
-function nashvilleAPI(dataset, params) {
-  const base = `https://data.nashville.gov/resource/${dataset}?${params}`;
-  return `/.netlify/functions/proxy?url=${encodeURIComponent(base)}`;
-}
-
-// Fetch 311 requests filtered by zip and category keywords, last N days
-async function fetch311(keywords, days=30, limit=200) {
-  const since = new Date(Date.now()-days*24*60*60*1000).toISOString().slice(0,10);
-  const kwFilter = keywords.map(k=>`request_type_title like '%${k}%'`).join(' OR ');
-  const where = `zip_code='37013' AND date_time_submitted>='${since}T00:00:00' AND (${kwFilter})`;
-  const params = new URLSearchParams({ $where:where, $limit:limit, $order:'date_time_submitted DESC' });
-  return fetchJSON(nashvilleAPI(DS_311, params));
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -313,114 +302,117 @@ async function loadWeather(){
   }catch(e){console.error('Weather:',e);document.getElementById('shortForecast').textContent='Error loading weather';}
 }
 
-// ── CRIME / SAFETY (Nashville 311) ───────────────────────────────
-function reqBadge(type) {
-  const t = (type||'').toUpperCase();
-  if(['ABANDONED','VEHICLE','JUNK'].some(v=>t.includes(v)))   return`<span class="badge badge-amber">${type}</span>`;
-  if(['NOISE','DISTURBANCE','ANIMAL'].some(v=>t.includes(v))) return`<span class="badge badge-purple">${type}</span>`;
-  if(['LITTER','DUMP','TRASH'].some(v=>t.includes(v)))        return`<span class="badge badge-cyan">${type}</span>`;
-  if(['GRAFFITI','VANDAL'].some(v=>t.includes(v)))            return`<span class="badge badge-red">${type}</span>`;
-  return`<span class="badge badge-green">${type||'OTHER'}</span>`;
-}
-
+// ── CRIME (FBI Crime Data API — Nashville MNPD) ─────────────────
 async function loadCrime(){
   const spinner=document.getElementById('crimeSpinner');
   try{
-    // Pull safety/nuisance-related 311 categories
-    const keywords=['Abandoned','Noise','Animal','Graffiti','Vandal','Litter','Dumping','Junk','Disturbance'];
-    const data = await fetch311(keywords, 30, 200);
+    const currentYear = new Date().getFullYear();
+    const prevYear = currentYear - 1;
+
+    // Fetch offense counts for Nashville MNPD for last 2 years
+    const url = `${FBI_BASE}/agency/offenses/${MNPD_ORI}/all?from=${prevYear}&to=${currentYear}&API_KEY=${FBI_KEY}`;
+    const json = await fetchJSON(url);
 
     spinner.style.display='none';
-    if(!Array.isArray(data)||data.length===0){
-      document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No 311 safety requests found for 37013.</td></tr>';
+    const results = json.data || [];
+    if(!results.length){
+      document.getElementById('crimeTableBody').innerHTML='<tr><td colspan="5" class="label py-4 text-center">No FBI crime data found.</td></tr>';
       return;
     }
 
-    const total=data.length;
-    const abandoned=data.filter(r=>(r.request_type_title||'').toUpperCase().includes('ABANDON')).length;
-    const noise=data.filter(r=>(r.request_type_title||'').toUpperCase().includes('NOISE')).length;
+    // Latest year summary
+    const latest = results[results.length-1];
+    const violent = (latest.violent_crime||0);
+    const property = (latest.property_crime||0);
+    const total = violent + property;
 
     document.getElementById('crimeSummary').innerHTML=`
-      <div class="summary-tile"><div class="label mb-1">TOTAL REQUESTS</div><div class="mono text-3xl font-bold neon-text">${total}</div></div>
-      <div class="summary-tile"><div class="label mb-1">ABANDONED VEHICLES</div><div class="mono text-3xl font-bold neon-amber">${abandoned}</div></div>
-      <div class="summary-tile"><div class="label mb-1">NOISE / DISTURBANCE</div><div class="mono text-3xl font-bold neon-purple">${noise}</div></div>`;
+      <div class="summary-tile"><div class="label mb-1">TOTAL CRIMES (${latest.data_year})</div><div class="mono text-3xl font-bold neon-text">${total.toLocaleString()}</div></div>
+      <div class="summary-tile"><div class="label mb-1">VIOLENT CRIME</div><div class="mono text-3xl font-bold neon-red">${violent.toLocaleString()}</div></div>
+      <div class="summary-tile"><div class="label mb-1">PROPERTY CRIME</div><div class="mono text-3xl font-bold neon-amber">${property.toLocaleString()}</div></div>`;
 
-    const typeCounts={};
-    data.forEach(r=>{const t=(r.request_type_title||'UNKNOWN');typeCounts[t]=(typeCounts[t]||0)+1;});
-    const sorted=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
-    buildCrimeChart(sorted.map(e=>e[0]),sorted.map(e=>e[1]));
+    // Bar chart: offense types from latest year
+    const offenseFields = [
+      ['homicide','Homicide'],['rape','Rape'],['robbery','Robbery'],
+      ['aggravated_assault','Agg. Assault'],['burglary','Burglary'],
+      ['larceny','Larceny'],['motor_vehicle_theft','MV Theft'],['arson','Arson']
+    ];
+    const labels=[], counts=[];
+    offenseFields.forEach(([field,label])=>{
+      if(latest[field]!=null){ labels.push(label); counts.push(latest[field]); }
+    });
+    buildCrimeChart(labels, counts);
 
-    document.getElementById('crimeTableBody').innerHTML=data.slice(0,50).map(r=>`
+    // Table: year-over-year comparison
+    document.getElementById('crimeTableBody').innerHTML=results.slice().reverse().map(r=>`
       <tr>
-        <td class="mono text-xs">${fmtDate(r.date_time_submitted)}</td>
-        <td class="font-semibold text-sm">${r.request_type_title||'--'}</td>
-        <td>${reqBadge(r.request_type_title||'')}</td>
-        <td class="text-xs text-slate-400">${r.mapped_location_address||r.address||'--'}</td>
-        <td class="text-xs text-slate-400">${r.status||'--'}</td>
+        <td class="mono text-sm font-bold">${r.data_year}</td>
+        <td class="mono">${(r.violent_crime||0).toLocaleString()}</td>
+        <td class="mono">${(r.homicide||0).toLocaleString()}</td>
+        <td class="mono">${(r.robbery||0).toLocaleString()}</td>
+        <td class="mono">${(r.property_crime||0).toLocaleString()}</td>
       </tr>`).join('');
+
   }catch(e){
     spinner.style.display='none';
-    console.error('Crime/311:',e);
+    console.error('Crime/FBI:',e);
     document.getElementById('crimeTableBody').innerHTML=`<tr><td colspan="5" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
   }
 }
 
-// ── TRAFFIC / ROAD (Nashville 311) ───────────────────────────────
-function roadBadge(type) {
-  const t = (type||'').toUpperCase();
-  if(t.includes('POTHOLE'))   return`<span class="badge badge-red">${type}</span>`;
-  if(t.includes('SIGNAL')||t.includes('LIGHT')) return`<span class="badge badge-amber">${type}</span>`;
-  if(t.includes('SIGN'))      return`<span class="badge badge-cyan">${type}</span>`;
-  if(t.includes('SIDEWALK')||t.includes('CURB')) return`<span class="badge badge-purple">${type}</span>`;
-  return`<span class="badge badge-green">${type||'OTHER'}</span>`;
-}
-
+// ── TRAFFIC / RIVER (USGS Cumberland River Gauge) ────────────────
 async function loadTraffic(){
   const spinner=document.getElementById('trafficSpinner');
   try{
-    const keywords=['Pothole','Traffic Signal','Street Light','Road','Sign','Sidewalk','Curb','Pavement','Street'];
-    const data = await fetch311(keywords, 30, 200);
-
+    const json = await fetchJSON(USGS_URL);
     spinner.style.display='none';
-    if(!Array.isArray(data)||data.length===0){
-      document.getElementById('trafficTableBody').innerHTML='<tr><td colspan="6" class="label py-4 text-center">No 311 road requests found for 37013.</td></tr>';
-      return;
-    }
 
-    const total=data.length;
-    const potholes=data.filter(r=>(r.request_type_title||'').toUpperCase().includes('POTHOLE')).length;
-    const signals=data.filter(r=>{const t=(r.request_type_title||'').toUpperCase();return t.includes('SIGNAL')||t.includes('LIGHT');}).length;
+    const series = json.value?.timeSeries || [];
+    let flow=null, stage=null, flowReadings=[], stageReadings=[];
+
+    series.forEach(s=>{
+      const code = s.variable?.variableCode?.[0]?.value;
+      const vals = s.values?.[0]?.value || [];
+      if(code==='00060'){ // discharge (cfs)
+        flow = parseFloat(vals[vals.length-1]?.value);
+        flowReadings = vals.slice(-24).map(v=>parseFloat(v.value));
+      }
+      if(code==='00065'){ // gauge height (ft)
+        stage = parseFloat(vals[vals.length-1]?.value);
+        stageReadings = vals.slice(-24).map(v=>parseFloat(v.value));
+      }
+    });
+
+    // Flood stage thresholds for Cumberland at Nashville
+    const floodStage = 40; // ft
+    const actionStage = 30;
+    const stageStatus = stage >= floodStage ? 'FLOOD STAGE' : stage >= actionStage ? 'ACTION STAGE' : 'NORMAL';
+    const stageColor = stage >= floodStage ? 'neon-red' : stage >= actionStage ? 'neon-amber' : 'neon-green';
 
     document.getElementById('trafficSummary').innerHTML=`
-      <div class="summary-tile"><div class="label mb-1">TOTAL REQUESTS</div><div class="mono text-3xl font-bold neon-amber">${total}</div></div>
-      <div class="summary-tile"><div class="label mb-1">POTHOLES</div><div class="mono text-3xl font-bold neon-red">${potholes}</div></div>
-      <div class="summary-tile"><div class="label mb-1">SIGNALS / LIGHTS</div><div class="mono text-3xl font-bold neon-cyan">${signals}</div></div>`;
+      <div class="summary-tile"><div class="label mb-1">GAUGE HEIGHT</div><div class="mono text-3xl font-bold neon-text">${stage!=null?stage.toFixed(1)+' ft':'--'}</div></div>
+      <div class="summary-tile"><div class="label mb-1">DISCHARGE</div><div class="mono text-3xl font-bold neon-amber">${flow!=null?flow.toLocaleString()+' cfs':'--'}</div></div>
+      <div class="summary-tile"><div class="label mb-1">RIVER STATUS</div><div class="mono text-2xl font-bold ${stageColor}">${stageStatus}</div></div>`;
 
-    // Build last-14-day chart
-    const dayCounts={};
-    for(let i=13;i>=0;i--){
-      const d=new Date(Date.now()-i*86400000);
-      dayCounts[d.toLocaleDateString('en-US',{month:'short',day:'numeric'})]=0;
-    }
-    data.forEach(r=>{
-      const raw=r.date_time_submitted;
-      if(!raw)return;
-      const key=new Date(raw).toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      if(key in dayCounts)dayCounts[key]++;
-    });
-    buildTrafficChart(Object.keys(dayCounts),Object.values(dayCounts));
+    // Chart: last 24 gauge height readings
+    const labels = stageReadings.map((_,i)=> i===stageReadings.length-1?'NOW':`-${stageReadings.length-1-i}h`);
+    buildTrafficChart(labels, stageReadings);
 
-    document.getElementById('trafficTableBody').innerHTML=data.slice(0,50).map(r=>`
-      <tr>
-        <td class="mono text-xs">${fmtDateTime(r.date_time_submitted)}</td>
-        <td class="text-xs text-slate-300">${r.mapped_location_address||r.address||'--'}</td>
-        <td>${roadBadge(r.request_type_title||'')}</td>
-        <td class="text-xs" colspan="2">${r.request_type_title||'--'}</td>
-        <td class="text-xs text-slate-400">${r.status||'--'}</td>
-      </tr>`).join('');
+    // Update table header and label
+    document.querySelector('#tab-traffic .label').textContent='CUMBERLAND RIVER GAUGE · NASHVILLE · USGS 03431500';
+
+    document.getElementById('trafficTableBody').innerHTML=`
+      <tr><td class="label" colspan="6" style="padding:16px 10px">
+        <div style="color:#4a8080;font-size:12px;line-height:1.8">
+          FLOOD STAGE: 40 ft &nbsp;·&nbsp; ACTION STAGE: 30 ft &nbsp;·&nbsp; CURRENT: ${stage!=null?stage.toFixed(2)+' ft':'--'}
+          <br>SOURCE: USGS NATIONAL WATER INFORMATION SYSTEM · SITE 03431500
+          <br><a href="https://waterdata.usgs.gov/monitoring-location/03431500/" target="_blank" style="color:var(--neon-cyan)">VIEW FULL GAUGE DATA →</a>
+        </div>
+      </td></tr>`;
+
   }catch(e){
     spinner.style.display='none';
-    console.error('Traffic/311:',e);
+    console.error('USGS:',e);
     document.getElementById('trafficTableBody').innerHTML=`<tr><td colspan="6" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
   }
 }
