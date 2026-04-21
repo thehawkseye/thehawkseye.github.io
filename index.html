@@ -70,6 +70,12 @@
     @keyframes spin { to{transform:rotate(360deg)} }
     .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     @media(max-width:500px){ .summary-grid{grid-template-columns:repeat(2,1fr)} }
+
+    .fin-input { background:transparent; border:none; border-bottom:1px solid rgba(0,245,255,0.2); font-family:'Share Tech Mono',monospace; font-size:24px; font-weight:700; text-align:center; width:100%; outline:none; padding:4px 0; }
+    .fin-input:focus { border-bottom-color:var(--neon-cyan); }
+    .fin-btn { width:100%; padding:12px; background:rgba(0,245,255,0.08); border:1px solid rgba(0,245,255,0.35); border-radius:8px; color:var(--neon-cyan); font-family:'Share Tech Mono',monospace; font-size:12px; letter-spacing:.1em; cursor:pointer; transition:all .2s; }
+    .fin-btn:hover { background:rgba(0,245,255,0.15); }
+    .fin-rec { margin-top:14px; background:rgba(0,245,255,0.04); border:1px solid rgba(0,245,255,0.2); border-radius:8px; padding:16px; line-height:1.9; font-size:14px; }
     .summary-tile { background:var(--bg-card2); border:1px solid var(--border-dim); border-radius:10px; padding:14px; text-align:center; }
   </style>
 </head>
@@ -84,6 +90,8 @@
       <button class="tab-btn active" onclick="switchTab('weather',this)">🌤 WEATHER</button>
       <button class="tab-btn" onclick="switchTab('crime',this)">🚨 CRIME</button>
       <button class="tab-btn" onclick="switchTab('traffic',this)">🌊 RIVER</button>
+      <button class="tab-btn" onclick="switchTab('finance',this)">💰 FINANCE</button>
+      <button class="tab-btn" onclick="switchTab('finance',this)">💰 FINANCE</button>
       <span class="live-dot ml-2"></span>
       <span class="label mono" id="lastUpdated">--:--</span>
     </div>
@@ -169,7 +177,74 @@
       </div>
     </div>
 
-    <div class="label text-center pb-4">WEATHER: NATIONAL WEATHER SERVICE · CRIME & TRAFFIC: NASHVILLE OPEN DATA PORTAL</div>
+    <div class="label text-center pb-4">
+    <!-- FINANCE TAB -->
+    <div id="tab-finance" class="tab-panel space-y-4">
+      <div class="card p-5">
+        <div class="label mb-4">NET WORTH SNAPSHOT · EDITABLE</div>
+        <div class="summary-grid">
+          <div class="summary-tile"><div class="label mb-1">HYSA</div><div class="flex items-center justify-center gap-1"><span style="color:#4a6080">$</span><input id="f-hysa" type="number" value="28000" class="fin-input neon-text"/></div><div class="label mt-1" style="color:#4a6080">@ <input id="f-hysa-rate" type="number" value="3.35" step="0.01" style="width:38px;background:transparent;border:none;color:#4a6080;font-family:Share Tech Mono,monospace;font-size:10px"/>% APY</div></div>
+          <div class="summary-tile"><div class="label mb-1">CHECKING</div><div class="flex items-center justify-center gap-1"><span style="color:#4a6080">$</span><input id="f-checking" type="number" value="12000" class="fin-input neon-green"/></div></div>
+          <div class="summary-tile"><div class="label mb-1">LIQUID STOCKS</div><div class="flex items-center justify-center gap-1"><span style="color:#4a6080">$</span><input id="f-stocks" type="number" value="29000" class="fin-input neon-amber"/></div></div>
+          <div class="summary-tile"><div class="label mb-1">AMZN STOCK</div><div class="flex items-center justify-center gap-1"><span style="color:#4a6080">$</span><input id="f-amzn" type="number" value="36000" class="fin-input neon-purple"/></div></div>
+          <div class="summary-tile"><div class="label mb-1">MONTHLY EXPENSES</div><div class="flex items-center justify-center gap-1"><span style="color:#4a6080">$</span><input id="f-expenses" type="number" value="6500" class="fin-input" style="color:#e0e8ff"/></div></div>
+          <div class="summary-tile"><div class="label mb-1">TOTAL LIQUID NET WORTH</div><div class="mono text-2xl font-bold neon-text" id="netWorthVal">--</div></div>
+        </div>
+      </div>
+
+      <div class="card p-5">
+        <div class="label mb-3">EMERGENCY FUND STATUS</div>
+        <div class="summary-grid" style="margin-bottom:12px">
+          <div class="summary-tile"><div class="label mb-1">TARGET (6 MO)</div><div class="mono text-2xl font-bold neon-amber" id="efTarget">--</div></div>
+          <div class="summary-tile"><div class="label mb-1">LIQUID CASH</div><div class="mono text-2xl font-bold neon-text" id="efCurrent">--</div></div>
+          <div class="summary-tile"><div class="label mb-1">STATUS</div><div class="mono text-xl font-bold" id="efStatus">--</div></div>
+        </div>
+        <div class="progress-bar" style="height:8px;border-radius:4px"><div id="efBar" class="progress-fill" style="width:0%;height:100%;border-radius:4px"></div></div>
+        <div class="label mt-2" id="efNote"></div>
+      </div>
+
+      <div class="card p-5">
+        <div class="label mb-4">CAR LOAN VS HYSA ANALYZER</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div><div class="label mb-1">LOAN BALANCE $</div><input id="f-loan-bal" type="number" value="20500" class="fin-input neon-red" style="font-size:26px"/></div>
+          <div><div class="label mb-1">LOAN APR %</div><input id="f-loan-rate" type="number" value="4.3" step="0.1" class="fin-input neon-red" style="font-size:26px"/></div>
+        </div>
+        <div class="summary-grid" style="margin-bottom:14px">
+          <div class="summary-tile"><div class="label mb-1">LOAN ANNUAL COST</div><div class="mono text-xl font-bold neon-red" id="loanCost">--</div></div>
+          <div class="summary-tile"><div class="label mb-1">HYSA ANNUAL EARN</div><div class="mono text-xl font-bold neon-green" id="hysaEarn">--</div></div>
+          <div class="summary-tile"><div class="label mb-1">NET ANNUAL DRAG</div><div class="mono text-xl font-bold neon-amber" id="netDrag">--</div></div>
+        </div>
+        <button onclick="runLoanAnalysis()" class="fin-btn">💡 RUN PAYOFF RECOMMENDATION</button>
+        <div id="loanRec" class="fin-rec hidden"></div>
+      </div>
+
+      <div class="card p-5">
+        <div class="label mb-4">VA IRRRL MORTGAGE TRACKER</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px">
+          <div><div class="label mb-1">CURRENT RATE %</div><input id="f-va-current" type="number" value="6.0" step="0.05" class="fin-input neon-red" style="font-size:26px"/></div>
+          <div><div class="label mb-1">NEW RATE % (TARGET)</div><input id="f-va-target" type="number" value="5.5" step="0.05" class="fin-input neon-green" style="font-size:26px"/></div>
+          <div><div class="label mb-1">LOAN BALANCE $</div><input id="f-va-bal" type="number" value="320000" class="fin-input neon-amber" style="font-size:20px"/></div>
+          <div><div class="label mb-1">CLOSING COSTS $</div><input id="f-va-costs" type="number" value="4000" class="fin-input" style="font-size:20px;color:#e0e8ff"/></div>
+        </div>
+        <div class="summary-grid" style="margin-bottom:14px">
+          <div class="summary-tile"><div class="label mb-1">MONTHLY SAVINGS</div><div class="mono text-xl font-bold neon-green" id="vaMonthly">--</div></div>
+          <div class="summary-tile"><div class="label mb-1">BREAK-EVEN</div><div class="mono text-xl font-bold neon-amber" id="vaBreakEven">--</div></div>
+          <div class="summary-tile"><div class="label mb-1">5-YR NET SAVINGS</div><div class="mono text-xl font-bold neon-text" id="va5yr">--</div></div>
+        </div>
+        <div style="background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:12px;margin-bottom:12px">
+          <div class="label mb-1">30-YR FIXED RATE WATCH (FREDDIE MAC / FRED)</div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="mono text-2xl font-bold neon-green" id="vaLiveRate">Loading…</div>
+            <div class="label" id="vaRateNote" style="color:#4a8080"></div>
+          </div>
+          <div class="label mt-1" style="color:#334455">VA rates typically run 0.25–0.5% below conventional 30-yr</div>
+        </div>
+        <button onclick="runVAAnalysis()" class="fin-btn" style="border-color:rgba(0,255,136,0.3);color:var(--neon-green);background:rgba(0,255,136,0.06)">🏠 RUN REFINANCE RECOMMENDATION</button>
+        <div id="vaRec" class="fin-rec hidden" style="border-color:rgba(0,255,136,0.2)"></div>
+      </div>
+    </div>
+
+    <div class="label text-center pb-4">WEATHER: NATIONAL WEATHER SERVICE · CRIME & TRAFFIC: NASHVILLE OPEN DATA PORTAL</div></div>
   </div>
 
 <script>
@@ -416,6 +491,201 @@ async function loadTraffic(){
     document.getElementById('trafficTableBody').innerHTML=`<tr><td colspan="6" class="label py-4 text-center neon-red">Error: ${e.message}</td></tr>`;
   }
 }
+
+
+// ── FINANCE TAB ─────────────────────────────────────────────────
+function $(id){ return document.getElementById(id); }
+function fmtMoney(n){ return '$' + Math.round(n).toLocaleString(); }
+
+function calcFinance(){
+  const hysa     = parseFloat($('f-hysa').value)||0;
+  const hysaRate = parseFloat($('f-hysa-rate').value)||0;
+  const checking = parseFloat($('f-checking').value)||0;
+  const stocks   = parseFloat($('f-stocks').value)||0;
+  const amzn     = parseFloat($('f-amzn').value)||0;
+  const expenses = parseFloat($('f-expenses').value)||0;
+  const loanBal  = parseFloat($('f-loan-bal').value)||0;
+  const loanRate = parseFloat($('f-loan-rate').value)||0;
+
+  // Net worth
+  const liquid = hysa + checking;
+  const total  = liquid + stocks + amzn;
+  $('netWorthVal').textContent = fmtMoney(total);
+
+  // Emergency fund
+  const target  = expenses * 6;
+  const pct     = Math.min(100, (liquid / target) * 100);
+  $('efTarget').textContent  = fmtMoney(target);
+  $('efCurrent').textContent = fmtMoney(liquid);
+  $('efBar').style.width     = pct + '%';
+  if(liquid >= target){
+    $('efStatus').textContent = '✅ FUNDED';
+    $('efStatus').className   = 'mono text-xl font-bold neon-green';
+    $('efNote').textContent   = `You have ${((liquid/target)*100).toFixed(0)}% of your 6-month target covered.`;
+  } else if(liquid >= target * 0.75){
+    $('efStatus').textContent = '⚠ CLOSE';
+    $('efStatus').className   = 'mono text-xl font-bold neon-amber';
+    $('efNote').textContent   = `${fmtMoney(target - liquid)} more needed to hit 6-month target.`;
+  } else {
+    $('efStatus').textContent = '🔴 UNDER';
+    $('efStatus').className   = 'mono text-xl font-bold neon-red';
+    $('efNote').textContent   = `${fmtMoney(target - liquid)} short of 6-month target. Prioritize building cash before payoffs.`;
+  }
+
+  // Loan vs HYSA
+  const loanCost = loanBal * (loanRate / 100);
+  const hysaEarn = hysa    * (hysaRate / 100);
+  const drag     = loanCost - hysaEarn;
+  $('loanCost').textContent = fmtMoney(loanCost) + '/yr';
+  $('hysaEarn').textContent = fmtMoney(hysaEarn) + '/yr';
+  $('netDrag').textContent  = fmtMoney(Math.abs(drag)) + '/yr ' + (drag > 0 ? '▲ cost' : '▼ earn');
+
+  // VA calcs live
+  calcVA();
+}
+
+function calcVA(){
+  const curRate  = parseFloat($('f-va-current').value)||0;
+  const newRate  = parseFloat($('f-va-target').value)||0;
+  const bal      = parseFloat($('f-va-bal').value)||0;
+  const costs    = parseFloat($('f-va-costs').value)||0;
+  const months   = 360;
+
+  function monthlyPayment(r, b){
+    const mr = r / 100 / 12;
+    return mr === 0 ? b/months : b * mr * Math.pow(1+mr, months) / (Math.pow(1+mr,months)-1);
+  }
+
+  const curPmt   = monthlyPayment(curRate, bal);
+  const newPmt   = monthlyPayment(newRate, bal);
+  const savings  = curPmt - newPmt;
+  const breakEven= savings > 0 ? costs / savings : Infinity;
+  const fiveYr   = savings * 60 - costs;
+
+  $('vaMonthly').textContent   = savings > 0 ? fmtMoney(savings) + '/mo' : '--';
+  $('vaBreakEven').textContent = savings > 0 ? Math.ceil(breakEven) + ' months' : 'N/A';
+  $('va5yr').textContent       = fiveYr > 0  ? fmtMoney(fiveYr)  : fmtMoney(fiveYr);
+}
+
+function runLoanAnalysis(){
+  const hysa     = parseFloat($('f-hysa').value)||0;
+  const checking = parseFloat($('f-checking').value)||0;
+  const expenses = parseFloat($('f-expenses').value)||0;
+  const loanBal  = parseFloat($('f-loan-bal').value)||0;
+  const loanRate = parseFloat($('f-loan-rate').value)||0;
+  const hysaRate = parseFloat($('f-hysa-rate').value)||0;
+  const stocks   = parseFloat($('f-stocks').value)||0;
+
+  const liquid   = hysa + checking;
+  const efTarget = expenses * 6;
+  const spread   = loanRate - hysaRate;
+  const annualDrag = loanBal * (spread / 100);
+  const canPay   = liquid - efTarget;
+
+  let html = '';
+
+  if(liquid < efTarget){
+    html = `<span class="neon-red font-bold">⛔ DO NOT PAY OFF THE LOAN YET.</span><br><br>
+Your liquid cash (${fmtMoney(liquid)}) is below your 6-month emergency fund target (${fmtMoney(efTarget)}).
+Draining cash to pay off a ${loanRate}% loan would leave you financially exposed. The cost of that exposure
+far exceeds the ${fmtMoney(annualDrag)}/yr you're losing to the rate spread.<br><br>
+<strong>Priority order:</strong> Build emergency fund → then reassess payoff.`;
+  } else if(spread < 1.0){
+    html = `<span class="neon-amber font-bold">⏸ HOLD — RATE SPREAD TOO SMALL TO JUSTIFY PAYOFF NOW.</span><br><br>
+Your loan costs ${loanRate}% and your HYSA earns ${hysaRate}%. The ${spread.toFixed(2)}% spread costs you only
+${fmtMoney(annualDrag)}/yr — not worth disrupting your liquidity for.<br><br>
+Your emergency fund is solid at ${fmtMoney(liquid)} (${((liquid/efTarget)*100).toFixed(0)}% of target).
+You have ${fmtMoney(canPay)} above your 6-month floor. If you want to deploy it, consider a lump-sum
+principal payment of ${fmtMoney(Math.min(canPay, loanBal))} to accelerate payoff without eliminating your buffer.<br><br>
+<strong>Watch trigger:</strong> If your HYSA rate drops below 3.0%, the math tips toward payoff.`;
+  } else {
+    html = `<span class="neon-green font-bold">✅ RECOMMEND PAYOFF — SPREAD JUSTIFIES ACTION.</span><br><br>
+At ${spread.toFixed(2)}% spread you're losing ${fmtMoney(annualDrag)}/yr. You have ${fmtMoney(canPay)}
+above your emergency fund floor. Pay ${fmtMoney(Math.min(canPay * 0.8, loanBal))} toward principal now
+and clear the remaining balance within 6–12 months from cash flow.`;
+  }
+
+  const rec = $('loanRec');
+  rec.innerHTML = html;
+  rec.classList.remove('hidden');
+}
+
+function runVAAnalysis(){
+  const curRate   = parseFloat($('f-va-current').value)||0;
+  const newRate   = parseFloat($('f-va-target').value)||0;
+  const bal       = parseFloat($('f-va-bal').value)||0;
+  const costs     = parseFloat($('f-va-costs').value)||0;
+  const liveRateEl = $('vaLiveRate').textContent;
+  const liveRate  = parseFloat(liveRateEl) || null;
+
+  const months = 360;
+  function mp(r,b){ const mr=r/100/12; return mr===0?b/months:b*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1); }
+
+  const curPmt  = mp(curRate, bal);
+  const newPmt  = mp(newRate, bal);
+  const savings = curPmt - newPmt;
+  const breakEven = savings > 0 ? Math.ceil(costs / savings) : null;
+  const fiveYr  = savings * 60 - costs;
+  const tenYr   = savings * 120 - costs;
+
+  let html = '';
+  const rateOk = newRate <= curRate - 0.5;
+  const breakOk = breakEven !== null && breakEven <= 24;
+
+  if(!rateOk){
+    html = `<span class="neon-red font-bold">⛔ NOT YET — RATE DROP INSUFFICIENT.</span><br><br>
+VA IRRRL guidelines require a minimum 0.5% rate reduction to qualify. Your current rate is ${curRate}%
+and the target is ${newRate}% — a ${(curRate - newRate).toFixed(2)}% drop.
+${liveRate ? `Current 30-yr conventional rates are around ${liveRate}%, so VA rates are likely near ${(liveRate - 0.35).toFixed(2)}%.` : ''}
+<br><br><strong>Your trigger:</strong> Watch for rates to hit ${(curRate - 0.5).toFixed(2)}% or below.
+Morgan Stanley projects rates could approach that range by mid-2026.`;
+  } else if(!breakOk){
+    html = `<span class="neon-amber font-bold">⚠ MARGINAL — BREAK-EVEN IS LONG.</span><br><br>
+The ${(curRate-newRate).toFixed(2)}% drop saves you ${fmtMoney(savings)}/month but your ${breakEven}-month
+break-even means you need to stay in the home ${Math.ceil(breakEven/12)} years to come out ahead.
+5-year net savings: ${fmtMoney(fiveYr)}. 10-year net savings: ${fmtMoney(tenYr)}.<br><br>
+If you plan to stay 5+ years, proceed. If uncertain, wait for rates to drop further.`;
+  } else {
+    html = `<span class="neon-green font-bold">✅ REFINANCE NOW — STRONG CASE.</span><br><br>
+A ${(curRate-newRate).toFixed(2)}% rate reduction saves ${fmtMoney(savings)}/month with a
+${breakEven}-month break-even. 5-year net gain: ${fmtMoney(fiveYr)}. 10-year net gain: ${fmtMoney(tenYr)}.<br><br>
+VA IRRRL is streamlined — no appraisal, no income verification required. Contact your current servicer first
+as they often offer the best rate to retain the loan. Get 3 quotes before committing.`;
+  }
+
+  const rec = $('vaRec');
+  rec.innerHTML = html;
+  rec.classList.remove('hidden');
+}
+
+// Fetch Freddie Mac 30yr rate from FRED (St. Louis Fed — public, no CORS issues)
+async function loadMortgageRate(){
+  try{
+    // FRED series MORTGAGE30US — weekly 30yr fixed rate
+    const url = 'https://api.stlouisfed.org/fred/series/observations?series_id=MORTGAGE30US&sort_order=desc&limit=1&file_type=json&api_key=a8d74c3958f66af547e86c1fd4b84b3b';
+    const json = await fetchJSON(url);
+    const obs = json.observations?.[0];
+    if(obs && obs.value !== '.'){
+      const rate = parseFloat(obs.value);
+      $('vaLiveRate').textContent = rate.toFixed(2) + '%';
+      $('vaRateNote').textContent = `AS OF ${obs.date} · VA rates ~${(rate-0.35).toFixed(2)}–${(rate-0.25).toFixed(2)}%`;
+      // Update target to VA estimate
+      const vaEst = (rate - 0.35).toFixed(2);
+      if(parseFloat($('f-va-target').value) === 5.5){ $('f-va-target').value = vaEst; calcVA(); }
+    }
+  }catch(e){
+    $('vaLiveRate').textContent = 'Unavailable';
+  }
+}
+
+// Wire up live recalc on all inputs
+document.addEventListener('DOMContentLoaded', ()=>{
+  ['f-hysa','f-hysa-rate','f-checking','f-stocks','f-amzn','f-expenses',
+   'f-loan-bal','f-loan-rate','f-va-current','f-va-target','f-va-bal','f-va-costs']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input', calcFinance); });
+  calcFinance();
+  loadMortgageRate();
+});
 
 // ── INIT ────────────────────────────────────────────────────────
 loadWeather();
